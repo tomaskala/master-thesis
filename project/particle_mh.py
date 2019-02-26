@@ -64,6 +64,8 @@ class PMH(abc.ABC):
     def _bootstrap_particle_filter(self, y: np.ndarray, theta: Dict[str, float]) -> float:
         T = y.shape[0]
         x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
+        assert x.shape == (self.state_init.shape[0], self.n_particles)
+
         log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
         log_w[0] = -np.log(self.n_particles)
 
@@ -87,22 +89,21 @@ class PMH(abc.ABC):
 
     def _mh_step(self, y: np.ndarray, theta_old: Dict[str, float], log_z_hat_old: float) -> Tuple[
         Dict[str, float], float, bool]:
-        theta_prime = self._sample_from_proposal(theta_old)
-        log_z_hat_prime = self._bootstrap_particle_filter(y, theta_prime)
-        alpha = self.random_state.rand()
+        theta_new = self._sample_from_proposal(theta_old)
+        log_z_hat_new = self._bootstrap_particle_filter(y, theta_new)
 
-        log_ratio = log_z_hat_prime - log_z_hat_old
+        log_ratio = log_z_hat_new - log_z_hat_old
 
         for var_name, prior in self.prior.items():
-            log_ratio += prior.logpdf(theta_prime[var_name])
+            log_ratio += prior.logpdf(theta_new[var_name])
             log_ratio -= prior.logpdf(theta_old[var_name])
 
         for var_name, proposal in self.proposal.items():
-            log_ratio += proposal.log_prob(theta_old[var_name], theta_prime[var_name])
-            log_ratio -= proposal.log_prob(theta_prime[var_name], theta_old[var_name])
+            log_ratio += proposal.log_prob(theta_old[var_name], theta_new[var_name])
+            log_ratio -= proposal.log_prob(theta_new[var_name], theta_old[var_name])
 
-        if np.log(alpha) <= log_ratio:
-            return theta_prime, log_z_hat_prime, True  # Accepted.
+        if np.isfinite(log_ratio) and np.log(self.random_state.uniform()) < log_ratio:
+            return theta_new, log_z_hat_new, True  # Accepted.
         else:
             return theta_old, log_z_hat_old, False  # Rejected.
 
@@ -138,10 +139,11 @@ class CenteredDistribution:
 
 class SpringDamper(PMH):
     def _transition(self, state: np.ndarray, theta: Dict[str, float]) -> np.ndarray:
-        s = state[0]
-        sdot = state[1]
+        v = self.random_state.normal(loc=0.0, scale=1e-2, size=self.n_particles)
 
-        assert s.shape == sdot.shape == (self.n_particles,)
+        state_old = state.copy()
+        s_old = state_old[0]
+        sdot_old = state_old[1]
 
         f_c = theta['f_c']
         c_0 = theta['c_0']
@@ -151,12 +153,11 @@ class SpringDamper(PMH):
         T_s = self.const['T_s']
         m = self.const['m']
 
-        v = stats.norm.rvs(loc=0.0, scale=1e-2, size=self.n_particles, random_state=self.random_state)
+        s = s_old + T_s * sdot_old
+        sdot = sdot_old + (T_s / m) * (
+                -f_c * np.sign(sdot_old) - c_0 * sdot_old - k * np.sign(s_old) * np.power(np.abs(s_old), p)) + v
 
-        new_s = s + T_s * sdot
-        new_sdot = sdot + (T_s / m) * (-f_c * np.sign(sdot) - c_0 * sdot - k * np.sign(s) * np.power(np.abs(s), p)) + v
-
-        out = np.array([new_s, new_sdot])
+        out = np.array([s, sdot])
         assert out.shape == state.shape
         return out
 
@@ -212,6 +213,22 @@ def main():
                        prior=prior,
                        proposal=proposal,
                        random_state=1)
+
+    # theta_true = {'f_c': 0.01, 'c_0': 0.71, 'k': 2.16, 'p': 0.58}
+    # x1 = pmh._transition(state=np.tile(state_init[:, np.newaxis], [1, 256]), theta=theta_true)
+    #
+    # x2 = pmh._transition(state=x1, theta=theta_true)
+    #
+    # y1 = pmh._observation_log_prob(y[0], state=x2, theta=theta_true)
+    #
+    # print(state_init)
+    # print()
+    # print(x1)
+    # print()
+    # print(y1)
+    # # print()
+    # # print(x2)
+    # exit()
 
     # theta_true = {
     #     'f_c': 0.01,
