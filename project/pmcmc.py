@@ -80,10 +80,10 @@ class PMH(abc.ABC):
             # TODO: Resample only after every 10th step. Or try stratified resampling.
             # TODO: Then, try a simple model with particle.
             # TODO: Then, try a linear model with Kalman instead of particle.
-            # indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-            indices = self._stratified_resampling(w)
+            indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
+            # indices = self._stratified_resampling(w)
 
-            x = self._transition(state=x[:, indices], theta=theta)
+            x = self._transition(state=x[:, indices], n=t + 1, theta=theta)
             log_w[t] = self._observation_log_prob(y=y[t], state=x, theta=theta)
 
         # Return the log-likelihood estimate.
@@ -147,7 +147,7 @@ class PMH(abc.ABC):
                 self.proposal.items()}
 
     @abc.abstractmethod
-    def _transition(self, state: np.ndarray, theta: Dict[str, float]) -> np.ndarray:
+    def _transition(self, state: np.ndarray, n: int, theta: Dict[str, float]) -> np.ndarray:
         pass
 
     @abc.abstractmethod
