@@ -11,31 +11,44 @@ from utils import check_random_state
 # TODO: Multivariate measurements => each coordinate can have its own kernel function.
 # TODO: If we assume independence, we can just multiply kernels === sum log-kernels.
 class Kernel(abc.ABC):
+    """
+    Base class for all kernel functions -- symmetric distributions in the location-scale family.
+    The kernels support two operations:
+    1. log_kernel
+       Given an array of N pseudo-measurements (N being the number of particles) and a single true
+       measurement y, calculate an array of N log-probabilities of each pseudo-measurement with the
+       kernel centered at y.
+    2. tune_scale
+       Given the alpha-th closest pseudo-measurement u to the true measurement y, and the high probability
+       region (HPR) probability p, calculate the kernel scale so that it covers alpha/N with a p-HPR, once
+       centered at y.
+    """
+
     def __init__(self):
         self.scale = 1.0
 
     @abc.abstractmethod
-    def log_kernel(self, u, center):
+    def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
         pass
 
     @abc.abstractmethod
-    def tune_scale(self, y, u, p):
+    def tune_scale(self, y: float, u: float, p: float):
         pass
 
 
 class GaussianKernel(Kernel):
-    def log_kernel(self, u, center):
-        return -((u - center) ** 2.0) / (2.0 * (self.scale ** 2.0))
+    def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
+        return -np.power(u - center, 2.0) / (2.0 * (self.scale ** 2.0))
 
-    def tune_scale(self, y, u, p):
+    def tune_scale(self, y: float, u: float, p: float):
         self.scale = np.abs(u - y) / norm.ppf(q=(p + 1) / 2)
 
 
 class CauchyKernel(Kernel):
-    def log_kernel(self, u, center):
-        return -np.log1p(((u - center) ** 2.0) / (self.scale ** 2.0))
+    def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
+        return -np.log1p(np.power(u - center, 2.0) / (self.scale ** 2.0))
 
-    def tune_scale(self, y, u, p):
+    def tune_scale(self, y: float, u: float, p: float):
         self.scale = np.abs(u - y) / cauchy.ppf(q=(p + 1) / 2)
 
 
@@ -294,9 +307,8 @@ class ABCMH(MH, abc.ABC):
 
             u_alpha = u[0]  # TODO: Find the `n_covered_pseudo_measurements`-th least distant u.
 
-            # TODO: Calculate kernel scale.
-            # TODO: Weights update.
-            # log_w[t] = self._observation_log_prob(y=y[t], state=x, theta=theta)  # TODO: Set correctly.
+            self.kernel.tune_scale(y[t], u_alpha, self.hpr_p)
+            log_w[t] = self.kernel.log_kernel(u=u, center=y[t])
 
         return np.sum(logsumexp(log_w, axis=1)) - T * np.log(self.n_particles)
 
