@@ -3,13 +3,40 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from scipy.special import logsumexp
-from scipy.stats import rv_continuous
+from scipy.stats import cauchy, norm, rv_continuous
 
 from utils import check_random_state
 
 
+# TODO: Multivariate measurements => each coordinate can have its own kernel function.
+# TODO: If we assume independence, we can just multiply kernels === sum log-kernels.
 class Kernel(abc.ABC):
-    pass
+    def __init__(self):
+        self.scale = 1.0
+
+    @abc.abstractmethod
+    def log_kernel(self, u, center):
+        pass
+
+    @abc.abstractmethod
+    def tune_scale(self, y, u, p):
+        pass
+
+
+class GaussianKernel(Kernel):
+    def log_kernel(self, u, center):
+        return -((u - center) ** 2.0) / (2.0 * (self.scale ** 2.0))
+
+    def tune_scale(self, y, u, p):
+        self.scale = np.abs(u - y) / norm.ppf(q=(p + 1) / 2)
+
+
+class CauchyKernel(Kernel):
+    def log_kernel(self, u, center):
+        return -np.log1p(((u - center) ** 2.0) / (self.scale ** 2.0))
+
+    def tune_scale(self, y, u, p):
+        self.scale = np.abs(u - y) / cauchy.ppf(q=(p + 1) / 2)
 
 
 class ProposalDistribution:
@@ -208,10 +235,20 @@ class PMH(MH, abc.ABC):
         pass
 
 
+# TODO: The indexing oddity.
+# x_0 should not generate any measurement, but it does in the simulation
+# generate this:
+# x_0  x_1  x_2  ...  x_T
+#      y_1  y_2  ...  y_T
+# then, you can set uniform weights on x_0
+
+
 class ABCMH(MH, abc.ABC):
     def __init__(self,
                  n_samples: int,
                  n_particles: int,
+                 alpha: int,
+                 hpr_p: float,
                  state_init: Union[Callable[[int], np.ndarray], np.ndarray],
                  const: Dict[str, float],
                  prior: Dict[str, rv_continuous],
@@ -221,10 +258,14 @@ class ABCMH(MH, abc.ABC):
                  tune_interval: int = 100,
                  theta_init: Optional[Dict[str, float]] = None,
                  random_state=None):
+        assert alpha <= n_particles, 'the number of covered pseudo-measurements must be at most the number of particles'
+
         super(ABCMH, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal, tune=tune,
                                     tune_interval=tune_interval, theta_init=theta_init, random_state=random_state)
 
         self.n_particles = n_particles
+        self.alpha = alpha
+        self.hpr_p = hpr_p
         self.state_init = state_init
         self.const = const
         self.kernel = kernel
@@ -240,7 +281,7 @@ class ABCMH(MH, abc.ABC):
         assert len(x.shape) == 2 and x.shape[1] == self.n_particles
 
         log_w = np.empty(shape=(T, self.n_particles), dtype=float)
-        # log_w[0] = self._observation_log_prob(y=y[0], state=x, theta=theta)  # TODO: Set correctly.
+        log_w[0] = -np.log(self.n_particles)  # TODO: Also set uniform weights in the particle filter.
 
         for t in range(1, T):
             w = np.exp(log_w[t - 1])
@@ -249,6 +290,12 @@ class ABCMH(MH, abc.ABC):
             indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
 
             x = self._transition(state=x[:, indices], n=t + 1, theta=theta)
+            u = self._measurement_model(state=x, theta=theta)
+
+            u_alpha = u[0]  # TODO: Find the `n_covered_pseudo_measurements`-th least distant u.
+
+            # TODO: Calculate kernel scale.
+            # TODO: Weights update.
             # log_w[t] = self._observation_log_prob(y=y[t], state=x, theta=theta)  # TODO: Set correctly.
 
         return np.sum(logsumexp(log_w, axis=1)) - T * np.log(self.n_particles)
@@ -258,5 +305,5 @@ class ABCMH(MH, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> float:
+    def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> np.array:
         pass
