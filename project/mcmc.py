@@ -123,7 +123,7 @@ class MH(abc.ABC):
     def _mh_step(self, y: np.ndarray, theta_old: Dict[str, float], loglik_hat_old: float) -> Tuple[
         Dict[str, float], float, bool]:
         if not self._steps_until_tune and self.tune:
-            self.tune_scale()
+            self._tune_scale()
             self._steps_until_tune = self.tune_interval
             self._accepted = 0
 
@@ -149,7 +149,7 @@ class MH(abc.ABC):
         else:
             return theta_old, loglik_hat_old, False  # Rejected.
 
-    def tune_scale(self):
+    def _tune_scale(self):
         """
         Tunes the scaling parameter for the proposal distribution
         according to the acceptance rate over the last tune_interval:
