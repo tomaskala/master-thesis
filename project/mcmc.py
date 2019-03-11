@@ -167,7 +167,6 @@ class MH(abc.ABC):
         """
         acceptance_rate = self._accepted / self.tune_interval
 
-        # Switch statement
         if acceptance_rate < 0.001:
             # Reduce by 90 percent.
             self._scaling *= 0.1
@@ -233,8 +232,8 @@ class PMH(MH, abc.ABC):
             w /= np.sum(w)
 
             indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-
             x = self._transition(state=x[:, indices], n=t + 1, theta=theta)
+
             log_w[t] = self._observation_log_prob(y=y[t], state=x, theta=theta)
 
         return np.sum(logsumexp(log_w, axis=1)) - T * np.log(self.n_particles)
@@ -301,16 +300,24 @@ class ABCMH(MH, abc.ABC):
             w /= np.sum(w)
 
             indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-
             x = self._transition(state=x[:, indices], n=t + 1, theta=theta)
             u = self._measurement_model(state=x, theta=theta)
 
-            u_alpha = u[0]  # TODO: Find the `n_covered_pseudo_measurements`-th least distant u.
-
+            u_alpha = self._alphath_closest(u, y[t])
             self.kernel.tune_scale(y[t], u_alpha, self.hpr_p)
+
             log_w[t] = self.kernel.log_kernel(u=u, center=y[t])
 
         return np.sum(logsumexp(log_w, axis=1)) - T * np.log(self.n_particles)
+
+    def _alphath_closest(self, u: np.ndarray, y: float) -> float:
+        distances_squared = np.dot(y - u, y - u)
+
+        # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
+        # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
+        alphath_closest_idx = np.argpartition(distances_squared, kth=self.alpha - 1, axis=-1)[self.alpha - 1]
+
+        return u[alphath_closest_idx]
 
     @abc.abstractmethod
     def _transition(self, state: np.ndarray, n: int, theta: Dict[str, float]) -> np.ndarray:
