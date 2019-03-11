@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 import numpy as np
 from scipy import stats
 
-from pmcmc import PMH, ProposalDistribution
+from mcmc import PMH, ProposalDistribution
 from utils import check_random_state, plot_parameters
 
 
