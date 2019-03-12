@@ -196,6 +196,19 @@ class MH(abc.ABC):
 
 
 class PMH(MH, abc.ABC):
+    """
+    Estimates the parameters of the state space model given by
+      p(x_{0:T}, y_{1:T}; \theta) = \pi(x_0) \prod_{t=1}^T f(x_t \mid x_{t-1}; \theta) g(y_t \mid x_t; \theta),
+    where pi(.) is the prior distribution of the initial state,
+          f(. \mid .; \theta) is the transition distribution,
+          g(. \mid .; \theta) is the emission distribution.
+    The intractable likelihood p(y_{1:T}; \theta) is estimated using the particle filter.
+
+    Assumes the following model:
+    x_0 -> x_1 -> x_2 -> ... -> x_T
+            |      |             |
+           y_1    y_2           y_T
+    """
     def __init__(self,
                  n_samples: int,
                  n_particles: int,
@@ -224,23 +237,24 @@ class PMH(MH, abc.ABC):
 
         assert len(x.shape) == 2 and x.shape[1] == self.n_particles
 
-        log_w = np.empty(shape=(T, self.n_particles), dtype=float)
-        log_w[0] = self._observation_log_prob(y=y[0], state=x, theta=theta)
+        log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
+        log_w[0] = -np.log(self.n_particles)
 
-        for t in range(1, T):
+        for t in range(1, T + 1):
+            # TODO: Resample at the end of the loop?
             w = np.exp(log_w[t - 1])
             w /= np.sum(w)
 
             indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-            x = self._transition(state=x[:, indices], n=t + 1, theta=theta)
+            x = self._transition(state=x[:, indices], n=t, theta=theta)
 
-            log_w[t] = self._observation_log_prob(y=y[t], state=x, theta=theta)
+            log_w[t] = self._observation_log_prob(y=y[t - 1], state=x, theta=theta)
 
-        return np.sum(logsumexp(log_w, axis=1)) - T * np.log(self.n_particles)
+        return np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
 
     @abc.abstractmethod
     def _transition(self, state: np.ndarray, n: int, theta: Dict[str, float]) -> np.ndarray:
-        pass
+        pass  # TODO: Rename `n` to `t`.
 
     @abc.abstractmethod
     def _observation_log_prob(self, y: float, state: np.ndarray, theta: Dict[str, float]) -> float:
@@ -254,7 +268,9 @@ class PMH(MH, abc.ABC):
 #      y_1  y_2  ...  y_T
 # then, you can set uniform weights on x_0
 
+# TODO: Store the sampler state so that we can load it and continue sampling some more.
 
+# TODO: Move the changes from PMH to ABCMH.
 class ABCMH(MH, abc.ABC):
     def __init__(self,
                  n_samples: int,

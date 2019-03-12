@@ -36,13 +36,14 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
         random_state = check_random_state(random_state)
         x = np.empty(shape=T, dtype=float)
         y = np.empty(shape=T, dtype=float)
-        x[0] = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_x1))
-        w = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_w))
-        y[0] = np.power(x[0], 2) / 20 + w
+        x_0 = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_x1))
 
-        for n in range(1, T):
+        x_prev = x_0
+
+        for n in range(T):
             v = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_v))
-            x[n] = x[n - 1] / 2 + 25 * (x[n - 1] / (1 + np.power(x[n - 1], 2))) + 8 * np.cos(1.2 * (n + 1)) + v
+            x[n] = x_prev / 2 + 25 * (x_prev / (1 + np.power(x_prev, 2))) + 8 * np.cos(1.2 * (n + 1)) + v
+            x_prev = x[n]
 
             w = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_w))
             y[n] = np.power(x[n], 2) / 20 + w
@@ -50,7 +51,7 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
         with open(path, mode='wb') as f:
             pickle.dump((x, y), f)
 
-        return x, y
+        return np.append(x_0, x), y
 
 
 def main():
