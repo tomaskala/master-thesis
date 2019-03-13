@@ -209,6 +209,7 @@ class PMH(MH, abc.ABC):
             |      |             |
            y_1    y_2           y_T
     """
+
     def __init__(self,
                  n_samples: int,
                  n_particles: int,
@@ -246,31 +247,22 @@ class PMH(MH, abc.ABC):
             w /= np.sum(w)
 
             indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-            x = self._transition(state=x[:, indices], n=t, theta=theta)
+            x = self._transition(state=x[:, indices], t=t, theta=theta)
 
             log_w[t] = self._observation_log_prob(y=y[t - 1], state=x, theta=theta)
 
         return np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
 
     @abc.abstractmethod
-    def _transition(self, state: np.ndarray, n: int, theta: Dict[str, float]) -> np.ndarray:
-        pass  # TODO: Rename `n` to `t`.
+    def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
+        pass
 
     @abc.abstractmethod
     def _observation_log_prob(self, y: float, state: np.ndarray, theta: Dict[str, float]) -> float:
         pass
 
 
-# TODO: The indexing oddity.
-# x_0 should not generate any measurement, but it does in the simulation
-# generate this:
-# x_0  x_1  x_2  ...  x_T
-#      y_1  y_2  ...  y_T
-# then, you can set uniform weights on x_0
-
 # TODO: Store the sampler state so that we can load it and continue sampling some more.
-
-# TODO: Move the changes from PMH to ABCMH.
 class ABCMH(MH, abc.ABC):
     def __init__(self,
                  n_samples: int,
@@ -308,26 +300,27 @@ class ABCMH(MH, abc.ABC):
 
         assert len(x.shape) == 2 and x.shape[1] == self.n_particles
 
-        log_w = np.empty(shape=(T, self.n_particles), dtype=float)
-        log_w[0] = -np.log(self.n_particles)  # TODO: Also set uniform weights in the particle filter.
+        log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
+        log_w[0] = -np.log(self.n_particles)
 
-        for t in range(1, T):
+        for t in range(1, T + 1):
             w = np.exp(log_w[t - 1])
             w /= np.sum(w)
 
             indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-            x = self._transition(state=x[:, indices], n=t + 1, theta=theta)
+            x = self._transition(state=x[:, indices], t=t, theta=theta)
             u = self._measurement_model(state=x, theta=theta)
 
             u_alpha = self._alphath_closest(u, y[t])
-            self.kernel.tune_scale(y[t], u_alpha, self.hpr_p)
+            self.kernel.tune_scale(y[t - 1], u_alpha, self.hpr_p)
 
-            log_w[t] = self.kernel.log_kernel(u=u, center=y[t])
+            log_w[t] = self.kernel.log_kernel(u=u, center=y[t - 1])
 
-        return np.sum(logsumexp(log_w, axis=1)) - T * np.log(self.n_particles)
+        return np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
 
     def _alphath_closest(self, u: np.ndarray, y: float) -> float:
-        distances_squared = np.dot(y - u, y - u)
+        # FIXME: This assumes 1D y and u.
+        distances_squared = np.power(y - u, 2)
 
         # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
         # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
@@ -336,7 +329,7 @@ class ABCMH(MH, abc.ABC):
         return u[alphath_closest_idx]
 
     @abc.abstractmethod
-    def _transition(self, state: np.ndarray, n: int, theta: Dict[str, float]) -> np.ndarray:
+    def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
         pass
 
     @abc.abstractmethod

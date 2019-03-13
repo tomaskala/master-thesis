@@ -10,12 +10,12 @@ from utils import check_random_state, plot_parameters
 
 
 class SimpleSSM(PMH):
-    def _transition(self, state: np.ndarray, n: int, theta: Dict[str, float]) -> np.ndarray:
+    def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
         assert state.shape == (1, self.n_particles)
 
         X_old = state[0]
         V_n = self.random_state.normal(loc=0.0, scale=np.sqrt(theta['sigma2_v']), size=self.n_particles)
-        X_new = X_old / 2 + 25 * (X_old / (1 + np.power(X_old, 2))) + 8 * np.cos(1.2 * n) + V_n
+        X_new = X_old / 2 + 25 * (X_old / (1 + np.power(X_old, 2))) + 8 * np.cos(1.2 * t) + V_n
 
         out = np.array([X_new])
         assert out.shape == state.shape
