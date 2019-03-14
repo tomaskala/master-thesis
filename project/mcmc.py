@@ -41,7 +41,7 @@ class GaussianKernel(Kernel):
         return -np.power(u - center, 2.0) / (2.0 * (self.scale ** 2.0))
 
     def tune_scale(self, y: float, u: float, p: float):
-        self.scale = np.abs(u - y) / norm.ppf(q=(p + 1) / 2)
+        self.scale = np.abs(u - y) / norm.ppf(q=((p + 1) / 2))
 
 
 class CauchyKernel(Kernel):
@@ -49,7 +49,7 @@ class CauchyKernel(Kernel):
         return -np.log1p(np.power(u - center, 2.0) / (self.scale ** 2.0))
 
     def tune_scale(self, y: float, u: float, p: float):
-        self.scale = np.abs(u - y) / cauchy.ppf(q=(p + 1) / 2)
+        self.scale = np.abs(u - y) / cauchy.ppf(q=((p + 1) / 2))
 
 
 class ProposalDistribution:
@@ -129,17 +129,39 @@ class MH(abc.ABC):
 
         delta = self._sample_from_proposal()
         theta_new = {var_name: var_value + delta[var_name] * self._scaling for var_name, var_value in theta_old.items()}
-        loglik_hat_new = self._log_likelihood_estimate(y, theta_new)
 
-        log_ratio = loglik_hat_new - loglik_hat_old
+        log_ratio = 0.0
 
         for var_name, prior in self.prior.items():
+            # print('theta_old', theta_old[var_name], 'p(theta_old)', np.exp(prior.logpdf(theta_old[var_name])))
+            # print('theta_new', theta_new[var_name], 'p(theta_new)', np.exp(prior.logpdf(theta_new[var_name])))
+
             log_ratio += prior.logpdf(theta_new[var_name])
             log_ratio -= prior.logpdf(theta_old[var_name])
 
+        if not np.isfinite(log_ratio):
+            return theta_old, loglik_hat_old, False  # Rejected.
+
         for var_name, proposal in self.proposal.items():
+            # print('q(theta_old|theta_new)', np.exp(proposal.log_prob(theta_old[var_name], theta_new[var_name])))
+            # print('q(theta_new|theta_old)', np.exp(proposal.log_prob(theta_new[var_name], theta_old[var_name])))
+
             log_ratio += proposal.log_prob(theta_old[var_name], theta_new[var_name])
             log_ratio -= proposal.log_prob(theta_new[var_name], theta_old[var_name])
+
+        if not np.isfinite(log_ratio):
+            return theta_old, loglik_hat_old, False  # Rejected.
+
+        loglik_hat_new = self._log_likelihood_estimate(y, theta_new)
+
+        log_ratio += loglik_hat_new
+        log_ratio -= loglik_hat_old
+
+        # print('lik_new', np.exp(loglik_hat_new))
+        # print('lik_old', np.exp(loglik_hat_old))
+        # print('Acceptance probability =', np.exp(log_ratio))
+        # print()
+        # print()
 
         self._steps_until_tune -= 1
 
@@ -311,12 +333,17 @@ class ABCMH(MH, abc.ABC):
             x = self._transition(state=x[:, indices], t=t, theta=theta)
             u = self._measurement_model(state=x, theta=theta)
 
-            u_alpha = self._alphath_closest(u, y[t])
-            self.kernel.tune_scale(y[t - 1], u_alpha, self.hpr_p)
+            u_alpha = self._alphath_closest(u=u, y=y[t - 1])
+            self.kernel.tune_scale(y=y[t - 1], u=u_alpha, p=self.hpr_p)
 
             log_w[t] = self.kernel.log_kernel(u=u, center=y[t - 1])
 
-        return np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
+        out = np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
+
+        if out < -20:
+            return -1500
+        else:
+            return out
 
     def _alphath_closest(self, u: np.ndarray, y: float) -> float:
         # FIXME: This assumes 1D y and u.
