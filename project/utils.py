@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats._distn_infrastructure import rv_continuous
+from scipy.stats import rv_continuous
 
 
 def check_random_state(random_state) -> np.random.RandomState:
@@ -20,7 +20,9 @@ def plot_parameters(thetas: List[Dict[str, float]],
                     pretty_names: Optional[Dict[str, str]] = None,
                     true_values: Optional[Dict[str, float]] = None,
                     priors: Optional[Dict[str, rv_continuous]] = None,
-                    paths: Optional[Dict[str, str]] = None):
+                    paths: Optional[Dict[str, str]] = None,
+                    bins: Optional[int] = None,
+                    burn_in: int = 0):
     """
     Plot the histograms of the sampled theta, representing the estimate of p(theta|y),
     possibly along with some additional quantities.
@@ -29,6 +31,8 @@ def plot_parameters(thetas: List[Dict[str, float]],
     :param true_values: optional mapping from variable names to their true values, will be shown in the plots
     :param priors: optional mapping from variable names to the prior distributions, will plot the densities
     :param paths: optional mapping from variable names to paths where the plots should be stored, instead of shown
+    :param bins: optional number of bins for the histogram
+    :param burn_in: drop this many samples from the beginning
     """
     assert len(thetas) > 0
     params2samples = {param_name: [] for param_name in thetas[0].keys()}
@@ -41,10 +45,10 @@ def plot_parameters(thetas: List[Dict[str, float]],
 
     for param_name, param_values in params2samples.items():
         show_prior = priors is not None and param_name in priors
-        plt.hist(param_values, density=show_prior, bins=100)
+        plt.hist(param_values[burn_in:], density=show_prior, bins=bins)
 
         if show_prior:
-            x = np.linspace(np.min(param_values), np.max(param_values), 100)
+            x = np.linspace(np.min(param_values[burn_in:]), np.max(param_values[burn_in:]), 100)
             plt.plot(x, priors[param_name].pdf(x), color='green')
 
         if pretty_names is not None and param_name in pretty_names:
@@ -52,7 +56,7 @@ def plot_parameters(thetas: List[Dict[str, float]],
         else:
             pretty_name = param_name
 
-        title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values))
+        title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values[burn_in:]))
 
         if true_values is not None and param_name in true_values:
             plt.axvline(true_values[param_name], color='red', lw=2)
