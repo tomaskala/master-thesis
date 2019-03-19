@@ -41,7 +41,7 @@ def plot_parameters(thetas: List[Dict[str, float]],
 
     for param_name, param_values in params2samples.items():
         show_prior = priors is not None and param_name in priors
-        plt.hist(param_values, density=show_prior)
+        plt.hist(param_values, density=show_prior, bins=100)
 
         if show_prior:
             x = np.linspace(np.min(param_values), np.max(param_values), 100)

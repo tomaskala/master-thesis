@@ -35,6 +35,10 @@ class Kernel(abc.ABC):
     def tune_scale(self, y: float, u: float, p: float):
         pass
 
+    @abc.abstractmethod
+    def sample(self, size: Optional[int] = None, random_state=None) -> Union[float, np.ndarray]:
+        pass
+
 
 class GaussianKernel(Kernel):
     def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
@@ -43,6 +47,9 @@ class GaussianKernel(Kernel):
     def tune_scale(self, y: float, u: float, p: float):
         self.scale = np.abs(u - y) / norm.ppf(q=((p + 1) / 2))
 
+    def sample(self, size: Optional[int] = None, random_state=None) -> Union[float, np.ndarray]:
+        return norm.rvs(loc=0.0, scale=self.scale, size=size, random_state=random_state)
+
 
 class CauchyKernel(Kernel):
     def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
@@ -50,6 +57,9 @@ class CauchyKernel(Kernel):
 
     def tune_scale(self, y: float, u: float, p: float):
         self.scale = np.abs(u - y) / cauchy.ppf(q=((p + 1) / 2))
+
+    def sample(self, size: Optional[int] = None, random_state=None) -> Union[float, np.ndarray]:
+        return cauchy.rvs(loc=0.0, scale=self.scale, size=size, random_state=random_state)
 
 
 class ProposalDistribution:
@@ -284,6 +294,12 @@ class PMH(MH, abc.ABC):
         pass
 
 
+# TODO: Corrupt the given observations y by noise, as given in `Parameter estimation in HMMs with intractable
+# TODO: likelihoods using SMC`.
+
+# TODO: First, try that with a fixed eps and only once. Then, do this in every iteration with the tuned eps.
+
+
 # TODO: Store the sampler state so that we can load it and continue sampling some more.
 class ABCMH(MH, abc.ABC):
     def __init__(self,
@@ -296,6 +312,7 @@ class ABCMH(MH, abc.ABC):
                  prior: Dict[str, rv_continuous],
                  proposal: Dict[str, ProposalDistribution],
                  kernel: Kernel,
+                 noisy_abc: bool = False,
                  tune: bool = True,
                  tune_interval: int = 100,
                  theta_init: Optional[Dict[str, float]] = None,
@@ -311,9 +328,14 @@ class ABCMH(MH, abc.ABC):
         self.state_init = state_init
         self.const = const
         self.kernel = kernel
+        self.noisy_abc = noisy_abc
 
     def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
         T = y.shape[0]
+
+        if self.noisy_abc:
+            y = y.copy()
+            y += self.kernel.sample(size=T, random_state=self.random_state)
 
         if callable(self.state_init):
             x = self.state_init(self.n_particles)
@@ -340,6 +362,7 @@ class ABCMH(MH, abc.ABC):
 
         out = np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
 
+        # Underflow check.
         if out < -20:
             return -1500
         else:

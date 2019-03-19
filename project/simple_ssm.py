@@ -94,7 +94,7 @@ def main():
     }
 
     proposal = {
-        'sigma2_v': ProposalDistribution(distribution_f=stats.norm, scale=2.2),
+        'sigma2_v': ProposalDistribution(distribution_f=stats.norm, scale=0.15),
         # 'sigma2_w': ProposalDistribution(distribution_f=stats.norm, scale=0.08),
     }
 
@@ -112,7 +112,7 @@ def main():
         return stats.norm.rvs(loc=0.0, scale=sigma_x1, size=(1, n_particles), random_state=1)
 
     if algorithm == 'abcmh':
-        mcmc = ABCMHSimpleSSM(n_samples=10000,
+        mcmc = ABCMHSimpleSSM(n_samples=2000,
                               n_particles=500,
                               alpha=int(0.9 * 500),
                               hpr_p=0.95,
@@ -121,6 +121,7 @@ def main():
                               prior=prior,
                               proposal=proposal,
                               kernel=GaussianKernel(),
+                              noisy_abc=True,
                               theta_init=theta_init,
                               random_state=1)
     else:
