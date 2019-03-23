@@ -89,7 +89,8 @@ def main():
     const = {}
 
     prior = {
-        'sigma2_v': stats.invgamma(0.01, scale=0.01),
+        'sigma2_v': stats.uniform(0.0, 30.0),
+        # 'sigma2_v': stats.invgamma(0.01, scale=0.01),
         # 'sigma2_w': stats.invgamma(0.01, scale=0.01)
     }
 
@@ -99,7 +100,7 @@ def main():
     }
 
     theta_init = {
-        'sigma2_v': 100.0,
+        'sigma2_v': 20.0,
         # 'sigma2_w': 100.0
     }
 
@@ -112,9 +113,9 @@ def main():
         return stats.norm.rvs(loc=0.0, scale=sigma_x1, size=(1, n_particles), random_state=1)
 
     if algorithm == 'abcmh':
-        mcmc = ABCMHSimpleSSM(n_samples=20000,
-                              n_particles=1000,
-                              alpha=int(0.9 * 1000),
+        mcmc = ABCMHSimpleSSM(n_samples=2000,
+                              n_particles=500,
+                              alpha=int(0.9 * 500),
                               hpr_p=0.95,
                               state_init=state_init,
                               const=const,
