@@ -159,8 +159,9 @@ class MH(abc.ABC):
             log_ratio += proposal.log_prob(theta_old[var_name], theta_new[var_name])
             log_ratio -= proposal.log_prob(theta_new[var_name], theta_old[var_name])
 
-        if not np.isfinite(log_ratio):
-            return theta_old, loglik_hat_old, False  # Rejected.
+        # FIXME: THIS SHOULD APPARENTLY NOT BE HERE.
+        # if not np.isfinite(log_ratio):
+        #     return theta_old, loglik_hat_old, False  # Rejected.
 
         loglik_hat_new = self._log_likelihood_estimate(y, theta_new)
 
@@ -335,7 +336,7 @@ class ABCMH(MH, abc.ABC):
 
         if self.noisy_abc:
             y = y.copy()
-            y += self.kernel.sample(size=T, random_state=self.random_state)
+            # y += self.kernel.sample(size=T, random_state=self.random_state)
 
         if callable(self.state_init):
             x = self.state_init(self.n_particles)
@@ -357,6 +358,9 @@ class ABCMH(MH, abc.ABC):
 
             u_alpha = self._alphath_closest(u=u, y=y[t - 1])
             self.kernel.tune_scale(y=y[t - 1], u=u_alpha, p=self.hpr_p)
+
+            if self.noisy_abc:
+                y[t - 1] += self.kernel.sample(random_state=self.random_state)
 
             log_w[t] = self.kernel.log_kernel(u=u, center=y[t - 1])
 

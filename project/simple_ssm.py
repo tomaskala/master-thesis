@@ -112,9 +112,9 @@ def main():
         return stats.norm.rvs(loc=0.0, scale=sigma_x1, size=(1, n_particles), random_state=1)
 
     if algorithm == 'abcmh':
-        mcmc = ABCMHSimpleSSM(n_samples=2000,
-                              n_particles=500,
-                              alpha=int(0.9 * 500),
+        mcmc = ABCMHSimpleSSM(n_samples=20000,
+                              n_particles=1000,
+                              alpha=int(0.9 * 1000),
                               hpr_p=0.95,
                               state_init=state_init,
                               const=const,
@@ -158,7 +158,7 @@ def main():
         'sigma2_w': sigma2_w
     }
 
-    plot_parameters(theta, pretty_names=pretty_names, true_values=true_values, priors=prior)
+    plot_parameters(theta, pretty_names=pretty_names, true_values=true_values, priors=prior, bins=100, max_lags=100)
 
 
 if __name__ == '__main__':

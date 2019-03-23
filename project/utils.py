@@ -1,4 +1,5 @@
 import numbers
+from statsmodels.graphics.tsaplots import plot_acf
 from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
@@ -22,7 +23,9 @@ def plot_parameters(thetas: List[Dict[str, float]],
                     priors: Optional[Dict[str, rv_continuous]] = None,
                     paths: Optional[Dict[str, str]] = None,
                     bins: Optional[int] = None,
-                    burn_in: int = 0):
+                    burn_in: int = 0,
+                    step: int = 1,
+                    max_lags: int = 10):
     """
     Plot the histograms of the sampled theta, representing the estimate of p(theta|y),
     possibly along with some additional quantities.
@@ -33,6 +36,8 @@ def plot_parameters(thetas: List[Dict[str, float]],
     :param paths: optional mapping from variable names to paths where the plots should be stored, instead of shown
     :param bins: optional number of bins for the histogram
     :param burn_in: drop this many samples from the beginning
+    :param step: only show every `step`th sample, in the hope of removing the correlation between consecutive samples
+    :param max_lags: maximum number of lags to show in the autocorrelation plot
     """
     assert len(thetas) > 0
     params2samples = {param_name: [] for param_name in thetas[0].keys()}
@@ -41,28 +46,43 @@ def plot_parameters(thetas: List[Dict[str, float]],
         for param_name, param_value in theta.items():
             params2samples[param_name].append(param_value)
 
-    fig = plt.figure()
-
     for param_name, param_values in params2samples.items():
+        # fig = plt.figure()
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        # Trace plot.
+        # plt.subplot(3, 1, 1)
+        ax1.set_title('Trace plot')
+        ax1.plot(param_values[burn_in::step])
+
+        # Autocorrelation.
+        # plt.subplot(3, 1, 2)
+        # plt.title('Autocorrelation')
+        # plt.acorr(param_values[burn_in:], maxlags=maxlags)
+        plot_acf(param_values[burn_in::step], ax=ax2, lags=max_lags)
+
+        # Histogram.
+        # plt.subplot(3, 1, 3)
+        ax3.set_title('Histogram')
+
         show_prior = priors is not None and param_name in priors
-        plt.hist(param_values[burn_in:], density=show_prior, bins=bins)
+        ax3.hist(param_values[burn_in::step], density=show_prior, bins=bins)
 
         if show_prior:
-            x = np.linspace(np.min(param_values[burn_in:]), np.max(param_values[burn_in:]), 100)
-            plt.plot(x, priors[param_name].pdf(x), color='green')
+            x = np.linspace(np.min(param_values[burn_in::step]), np.max(param_values[burn_in::step]), 100)
+            ax3.plot(x, priors[param_name].pdf(x), color='green')
 
         if pretty_names is not None and param_name in pretty_names:
             pretty_name = pretty_names[param_name]
         else:
             pretty_name = param_name
 
-        title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values[burn_in:]))
+        title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values[burn_in::step]))
 
         if true_values is not None and param_name in true_values:
-            plt.axvline(true_values[param_name], color='red', lw=2)
+            ax3.axvline(true_values[param_name], color='red', lw=2)
             title += ', true value: {:.03f}'.format(true_values[param_name])
 
-        plt.title(title)
+            plt.suptitle(title)
 
         if paths is not None and param_name in paths:
             fig.savefig(paths[param_name])
