@@ -156,9 +156,6 @@ class MH(abc.ABC):
         log_ratio = 0.0
 
         for var_name, prior in self.prior.items():
-            # print('theta_old', theta_old[var_name], 'p(theta_old)', np.exp(prior.logpdf(theta_old[var_name])))
-            # print('theta_new', theta_new[var_name], 'p(theta_new)', np.exp(prior.logpdf(theta_new[var_name])))
-
             log_ratio += prior.logpdf(theta_new[var_name])
             log_ratio -= prior.logpdf(theta_old[var_name])
 
@@ -166,9 +163,6 @@ class MH(abc.ABC):
             return theta_old, loglik_hat_old, False  # Rejected.
 
         for var_name, proposal in self.proposal.items():
-            # print('q(theta_old|theta_new)', np.exp(proposal.log_prob(theta_old[var_name], theta_new[var_name])))
-            # print('q(theta_new|theta_old)', np.exp(proposal.log_prob(theta_new[var_name], theta_old[var_name])))
-
             log_ratio += proposal.log_prob(theta_old[var_name], theta_new[var_name])
             log_ratio -= proposal.log_prob(theta_new[var_name], theta_old[var_name])
 
@@ -180,12 +174,6 @@ class MH(abc.ABC):
 
         log_ratio += loglik_hat_new
         log_ratio -= loglik_hat_old
-
-        # print('lik_new', np.exp(loglik_hat_new))
-        # print('lik_old', np.exp(loglik_hat_old))
-        # print('Acceptance probability =', np.exp(log_ratio))
-        # print()
-        # print()
 
         self._steps_until_tune -= 1
 
@@ -305,6 +293,7 @@ class PMH(MH, abc.ABC):
 # TODO: Thinning & burn-in.
 # TODO: Increase the trace plot dynamic (non-dynamic proposal scale tuning).
 # TODO: Gamma prior, truncated normal proposal.
+# TODO: Add an optinal `is_symmetric` parameter to the proposal & filter in the proposal log-prob loop.
 
 
 # TODO: Store the sampler state so that we can load it and continue sampling some more.
