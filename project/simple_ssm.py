@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 import numpy as np
 from scipy import stats
 
-from mcmc import ABCMH, GaussianKernel, PMH, ProposalDistribution
+from mcmc import ABCMH, PMH, ProposalDistribution
 from utils import check_random_state, plot_parameters
 
 
@@ -121,7 +121,7 @@ def main():
                               const=const,
                               prior=prior,
                               proposal=proposal,
-                              kernel=GaussianKernel(),
+                              kernel='gaussian',
                               noisy_abc=True,
                               theta_init=theta_init,
                               random_state=1)

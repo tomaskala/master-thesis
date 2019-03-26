@@ -311,7 +311,7 @@ class ABCMH(MH, abc.ABC):
                  const: Dict[str, float],
                  prior: Dict[str, rv_continuous],
                  proposal: Dict[str, ProposalDistribution],
-                 kernel: Kernel,
+                 kernel: str,
                  noisy_abc: bool = False,
                  tune: bool = True,
                  tune_interval: int = 100,
@@ -327,7 +327,14 @@ class ABCMH(MH, abc.ABC):
         self.hpr_p = hpr_p
         self.state_init = state_init
         self.const = const
-        self.kernel = kernel
+
+        if kernel == 'gaussian':
+            self.kernel = GaussianKernel()
+        elif kernel == 'cauchy':
+            self.kernel = CauchyKernel()
+        else:
+            raise ValueError('Unknown kernel: {}.'.format(kernel))
+
         self.noisy_abc = noisy_abc
 
     def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
