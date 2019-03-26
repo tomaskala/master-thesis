@@ -55,7 +55,7 @@ def plot_parameters(thetas: List[Dict[str, float]],
         else:
             fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
 
-            ax3.set_title('Scales of the ABC kernel')
+            ax4.set_title('Scales of the ABC kernel')
             ax4.plot(kernel_scales)
 
         # Trace plot.
