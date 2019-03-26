@@ -1,6 +1,6 @@
 import os
 import pickle
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
 from scipy import stats
@@ -77,6 +77,13 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
         return np.append(x_0, x), y
 
 
+def update_truncnorm(center: float, params: Dict[str, Any]) -> Dict[str, Any]:
+    params['a'] = (params['a'] - center) / params['scale']
+    params['b'] = (params['b'] - center) / params['scale']
+
+    return params
+
+
 def main():
     # Either 'abcmh' or 'pmh'.
     algorithm = 'abcmh'
@@ -89,13 +96,15 @@ def main():
     const = {}
 
     prior = {
-        'sigma2_v': stats.uniform(0.0, 30.0),
-        # 'sigma2_v': stats.invgamma(0.01, scale=0.01),
-        # 'sigma2_w': stats.invgamma(0.01, scale=0.01)
+        # 'sigma2_v': stats.uniform(0.0, 30.0),
+        'sigma2_v': stats.invgamma(a=1.0, scale=10.0),
+        # 'sigma2_w': stats.invgamma(a=0.01, scale=0.01)
     }
 
     proposal = {
-        'sigma2_v': ProposalDistribution(distribution_f=stats.norm, scale=0.15, is_symmetric=True),
+        # 'sigma2_v': ProposalDistribution(distribution_f=stats.norm, scale=0.15, is_symmetric=True),
+        'sigma2_v': ProposalDistribution(distribution_f=stats.truncnorm, param_update=update_truncnorm, scale=0.15,
+                                         a=0.0, b=np.inf)
         # 'sigma2_w': ProposalDistribution(distribution_f=stats.norm, scale=0.08),
     }
 
@@ -117,7 +126,7 @@ def main():
             mcmc = pickle.load(f)
     else:
         if algorithm == 'abcmh':
-            mcmc = ABCMHSimpleSSM(n_samples=200,
+            mcmc = ABCMHSimpleSSM(n_samples=20000,
                                   n_particles=500,
                                   alpha=0.9,
                                   hpr_p=0.95,
@@ -166,8 +175,46 @@ def main():
         'sigma2_w': sigma2_w
     }
 
+    # # Histogram detail.
+    # import matplotlib.pyplot as plt
+    # fig = plt.figure()
+    # plt.title('Histogram')
+    #
+    # burn_in = 0
+    # step = 1
+    # bins = 100
+    # plt.ylim((0.0, 0.00175))
+    #
+    # params2samples = {param_name: [] for param_name in theta[0].keys()}
+    #
+    # for thetaa in theta:
+    #     for param_name, param_value in thetaa.items():
+    #         params2samples[param_name].append(param_value)
+    #
+    # for param_name, param_values in params2samples.items():
+    #
+    #     plt.hist(param_values[burn_in::step], density=True, bins=bins)
+    #
+    #     x = np.linspace(np.min(param_values[burn_in::step]), np.max(param_values[burn_in::step]), 100)
+    #     plt.plot(x, prior[param_name].pdf(x), color='green')
+    #
+    #     if pretty_names is not None and param_name in pretty_names:
+    #         pretty_name = pretty_names[param_name]
+    #     else:
+    #         pretty_name = param_name
+    #
+    #     title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values[burn_in::step]))
+    #
+    #     if true_values is not None and param_name in true_values:
+    #         plt.axvline(true_values[param_name], color='red', lw=2)
+    #         title += ', true value: {:.03f}'.format(true_values[param_name])
+    #
+    #         plt.suptitle(title)
+    #
+    #     plt.show()
+
     plot_parameters(theta, pretty_names=pretty_names, true_values=true_values, priors=prior,
-                    kernel_scales=mcmc.kernel.scale_log, bins=100, max_lags=100)
+                    kernel_scales=mcmc.kernel.scale_log, bins=200, max_lags=100)
 
 
 if __name__ == '__main__':

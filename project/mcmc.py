@@ -307,10 +307,6 @@ class PMH(MH, abc.ABC):
         pass
 
 
-# TODO: Thinning & burn-in.
-# TODO: Increase the trace plot dynamic (non-dynamic proposal scale tuning).
-
-
 # TODO: Store the sampler state so that we can load it and continue sampling some more.
 class ABCMH(MH, abc.ABC):
     def __init__(self,
