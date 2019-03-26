@@ -26,13 +26,18 @@ class Kernel(abc.ABC):
 
     def __init__(self):
         self.scale = 1.0
+        self.scale_log = [self.scale]
 
     @abc.abstractmethod
     def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
         pass
 
-    @abc.abstractmethod
     def tune_scale(self, y: float, u: float, p: float):
+        self._tune_scale(y=y, u=u, p=p)
+        self.scale_log.append(self.scale)
+
+    @abc.abstractmethod
+    def _tune_scale(self, y: float, u: float, p: float):
         pass
 
     @abc.abstractmethod
@@ -44,7 +49,7 @@ class GaussianKernel(Kernel):
     def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
         return -np.power(u - center, 2.0) / (2.0 * (self.scale ** 2.0))
 
-    def tune_scale(self, y: float, u: float, p: float):
+    def _tune_scale(self, y: float, u: float, p: float):
         self.scale = np.abs(u - y) / norm.ppf(q=((p + 1) / 2))
 
     def sample(self, size: Optional[int] = None, random_state=None) -> Union[float, np.ndarray]:
@@ -55,7 +60,7 @@ class CauchyKernel(Kernel):
     def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
         return -np.log1p(np.power(u - center, 2.0) / (self.scale ** 2.0))
 
-    def tune_scale(self, y: float, u: float, p: float):
+    def _tune_scale(self, y: float, u: float, p: float):
         self.scale = np.abs(u - y) / cauchy.ppf(q=((p + 1) / 2))
 
     def sample(self, size: Optional[int] = None, random_state=None) -> Union[float, np.ndarray]:
@@ -65,18 +70,26 @@ class CauchyKernel(Kernel):
 class ProposalDistribution:
     def __init__(self,
                  distribution_f,
-                 param_update: Callable[[Dict[str, Any]], Dict[str, Any]] = lambda x: x,
+                 param_update: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
                  **kwargs):
         self.distribution_f = distribution_f
         self.param_update = param_update
         self.kwargs = kwargs
 
     def sample(self, size: Optional[int] = None, random_state=None):
-        params = self.param_update(self.kwargs.copy())
+        if self.param_update is not None:
+            params = self.param_update(self.kwargs.copy())
+        else:
+            params = self.kwargs
+
         return self.distribution_f.rvs(loc=0.0, size=size, random_state=random_state, **params)
 
     def log_prob(self, x: float, center: float):
-        params = self.param_update(self.kwargs.copy())
+        if self.param_update is not None:
+            params = self.param_update(self.kwargs.copy())
+        else:
+            params = self.kwargs
+
         return self.distribution_f.logpdf(x=x, loc=center, **params)
 
 
@@ -246,7 +259,7 @@ class PMH(MH, abc.ABC):
     def __init__(self,
                  n_samples: int,
                  n_particles: int,
-                 state_init: Union[Callable[[int], np.ndarray], np.ndarray],
+                 state_init: np.ndarray,
                  const: Dict[str, float],
                  prior: Dict[str, rv_continuous],
                  proposal: Dict[str, ProposalDistribution],
@@ -263,12 +276,7 @@ class PMH(MH, abc.ABC):
 
     def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
         T = y.shape[0]
-
-        if callable(self.state_init):
-            x = self.state_init(self.n_particles)
-        else:
-            x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
-
+        x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
         assert len(x.shape) == 2 and x.shape[1] == self.n_particles
 
         log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
@@ -297,7 +305,6 @@ class PMH(MH, abc.ABC):
 # TODO: Thinning & burn-in.
 # TODO: Increase the trace plot dynamic (non-dynamic proposal scale tuning).
 # TODO: Gamma prior, truncated normal proposal.
-# TODO: Observe the ABC kernel scale.
 
 
 # TODO: Store the sampler state so that we can load it and continue sampling some more.
@@ -307,7 +314,7 @@ class ABCMH(MH, abc.ABC):
                  n_particles: int,
                  alpha: int,
                  hpr_p: float,
-                 state_init: Union[Callable[[int], np.ndarray], np.ndarray],
+                 state_init: np.ndarray,
                  const: Dict[str, float],
                  prior: Dict[str, rv_continuous],
                  proposal: Dict[str, ProposalDistribution],
@@ -339,17 +346,12 @@ class ABCMH(MH, abc.ABC):
 
     def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
         T = y.shape[0]
+        x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
+        assert len(x.shape) == 2 and x.shape[1] == self.n_particles
 
         if self.noisy_abc:
             y = y.copy()
             # y += self.kernel.sample(size=T, random_state=self.random_state)
-
-        if callable(self.state_init):
-            x = self.state_init(self.n_particles)
-        else:
-            x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
-
-        assert len(x.shape) == 2 and x.shape[1] == self.n_particles
 
         log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
         log_w[0] = -np.log(self.n_particles)

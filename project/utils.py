@@ -21,6 +21,7 @@ def plot_parameters(thetas: List[Dict[str, float]],
                     pretty_names: Optional[Dict[str, str]] = None,
                     true_values: Optional[Dict[str, float]] = None,
                     priors: Optional[Dict[str, rv_continuous]] = None,
+                    kernel_scales: Optional[List[float]] = None,
                     paths: Optional[Dict[str, str]] = None,
                     bins: Optional[int] = None,
                     burn_in: int = 0,
@@ -33,6 +34,7 @@ def plot_parameters(thetas: List[Dict[str, float]],
     :param pretty_names: optional mapping from variable names to how they should be shown in the plot title
     :param true_values: optional mapping from variable names to their true values, will be shown in the plots
     :param priors: optional mapping from variable names to the prior distributions, will plot the densities
+    :param kernel_scales: optional list of scales of the ABC kernel
     :param paths: optional mapping from variable names to paths where the plots should be stored, instead of shown
     :param bins: optional number of bins for the histogram
     :param burn_in: drop this many samples from the beginning
@@ -47,21 +49,23 @@ def plot_parameters(thetas: List[Dict[str, float]],
             params2samples[param_name].append(param_value)
 
     for param_name, param_values in params2samples.items():
-        # fig = plt.figure()
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        if kernel_scales is None or len(kernel_scales) <= 1:
+            # Either the kernel scales have not been given or just the initial scale is present.
+            fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        else:
+            fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
+
+            ax3.set_title('Scales of the ABC kernel')
+            ax4.plot(kernel_scales)
+
         # Trace plot.
-        # plt.subplot(3, 1, 1)
         ax1.set_title('Trace plot')
         ax1.plot(param_values[burn_in::step])
 
         # Autocorrelation.
-        # plt.subplot(3, 1, 2)
-        # plt.title('Autocorrelation')
-        # plt.acorr(param_values[burn_in:], maxlags=maxlags)
         plot_acf(param_values[burn_in::step], ax=ax2, lags=max_lags)
 
         # Histogram.
-        # plt.subplot(3, 1, 3)
         ax3.set_title('Histogram')
 
         show_prior = priors is not None and param_name in priors

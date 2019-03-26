@@ -108,32 +108,36 @@ def main():
     sigma2_w = 1.0
     sigma2_x1 = 0.5
     sigma_x1 = np.sqrt(sigma2_x1)
+    state_init = stats.norm.rvs(loc=0.0, scale=sigma_x1, size=1, random_state=1)
 
-    def state_init(n_particles):
-        return stats.norm.rvs(loc=0.0, scale=sigma_x1, size=(1, n_particles), random_state=1)
+    sampler_path = os.path.join(simple_ssm_path, 'sampler.pickle')
 
-    if algorithm == 'abcmh':
-        mcmc = ABCMHSimpleSSM(n_samples=2000,
-                              n_particles=500,
-                              alpha=int(0.9 * 500),
-                              hpr_p=0.95,
-                              state_init=state_init,
-                              const=const,
-                              prior=prior,
-                              proposal=proposal,
-                              kernel='gaussian',
-                              noisy_abc=True,
-                              theta_init=theta_init,
-                              random_state=1)
+    if os.path.exists(sampler_path):
+        with open(sampler_path, mode='rb') as f:
+            mcmc = pickle.load(f)
     else:
-        mcmc = PMHSimpleSSM(n_samples=2000,  # Paper: 50000 samples, 10000 burn-in.
-                            n_particles=500,  # Paper: 5000 particles.
-                            state_init=state_init,
-                            const=const,
-                            prior=prior,
-                            proposal=proposal,
-                            theta_init=theta_init,
-                            random_state=1)
+        if algorithm == 'abcmh':
+            mcmc = ABCMHSimpleSSM(n_samples=200,
+                                  n_particles=500,
+                                  alpha=int(0.9 * 500),
+                                  hpr_p=0.95,
+                                  state_init=state_init,
+                                  const=const,
+                                  prior=prior,
+                                  proposal=proposal,
+                                  kernel='gaussian',
+                                  noisy_abc=True,
+                                  theta_init=theta_init,
+                                  random_state=1)
+        else:
+            mcmc = PMHSimpleSSM(n_samples=2000,  # Paper: 50000 samples, 10000 burn-in.
+                                n_particles=500,  # Paper: 5000 particles.
+                                state_init=state_init,
+                                const=const,
+                                prior=prior,
+                                proposal=proposal,
+                                theta_init=theta_init,
+                                random_state=1)
 
     x, y = simulate_xy(os.path.join(simple_ssm_path, 'simulated_data.pickle'), T=500, sigma2_v=sigma2_v,
                        sigma2_w=sigma2_w, sigma2_x1=sigma2_x1, random_state=1)
@@ -145,6 +149,9 @@ def main():
             theta = pickle.load(f)
     else:
         theta = mcmc.do_inference(y)
+
+        with open(sampler_path, mode='wb') as f:
+            pickle.dump(mcmc, f)
 
         with open(sampled_theta_path, mode='wb') as f:
             pickle.dump(theta, f)
@@ -159,7 +166,8 @@ def main():
         'sigma2_w': sigma2_w
     }
 
-    plot_parameters(theta, pretty_names=pretty_names, true_values=true_values, priors=prior, bins=100, max_lags=100)
+    plot_parameters(theta, pretty_names=pretty_names, true_values=true_values, priors=prior,
+                    kernel_scales=mcmc.kernel.scale_log, bins=100, max_lags=100)
 
 
 if __name__ == '__main__':
