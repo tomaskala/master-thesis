@@ -119,7 +119,7 @@ def main():
         if algorithm == 'abcmh':
             mcmc = ABCMHSimpleSSM(n_samples=200,
                                   n_particles=500,
-                                  alpha=int(0.9 * 500),
+                                  alpha=0.9,
                                   hpr_p=0.95,
                                   state_init=state_init,
                                   const=const,

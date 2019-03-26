@@ -312,7 +312,7 @@ class ABCMH(MH, abc.ABC):
     def __init__(self,
                  n_samples: int,
                  n_particles: int,
-                 alpha: int,
+                 alpha: float,
                  hpr_p: float,
                  state_init: np.ndarray,
                  const: Dict[str, float],
@@ -324,13 +324,14 @@ class ABCMH(MH, abc.ABC):
                  tune_interval: int = 100,
                  theta_init: Optional[Dict[str, float]] = None,
                  random_state=None):
-        assert alpha <= n_particles, 'the number of covered pseudo-measurements must be at most the number of particles'
+        assert int(alpha * n_particles) <= n_particles, \
+            'the number of covered pseudo-measurements must be at most the number of particles'
 
         super(ABCMH, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal, tune=tune,
                                     tune_interval=tune_interval, theta_init=theta_init, random_state=random_state)
 
         self.n_particles = n_particles
-        self.alpha = alpha
+        self.n_particles_covered = int(alpha * n_particles)
         self.hpr_p = hpr_p
         self.state_init = state_init
         self.const = const
@@ -351,7 +352,6 @@ class ABCMH(MH, abc.ABC):
 
         if self.noisy_abc:
             y = y.copy()
-            # y += self.kernel.sample(size=T, random_state=self.random_state)
 
         log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
         log_w[0] = -np.log(self.n_particles)
@@ -386,7 +386,8 @@ class ABCMH(MH, abc.ABC):
 
         # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
         # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
-        alphath_closest_idx = np.argpartition(distances_squared, kth=self.alpha - 1, axis=-1)[self.alpha - 1]
+        alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1, axis=-1)[
+            self.n_particles_covered - 1]
 
         return u[alphath_closest_idx]
 
