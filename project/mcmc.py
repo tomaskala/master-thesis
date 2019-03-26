@@ -275,7 +275,6 @@ class PMH(MH, abc.ABC):
         log_w[0] = -np.log(self.n_particles)
 
         for t in range(1, T + 1):
-            # TODO: Resample at the end of the loop?
             w = np.exp(log_w[t - 1])
             w /= np.sum(w)
 
@@ -295,10 +294,10 @@ class PMH(MH, abc.ABC):
         pass
 
 
-# TODO: Corrupt the given observations y by noise, as given in `Parameter estimation in HMMs with intractable
-# TODO: likelihoods using SMC`.
-
-# TODO: First, try that with a fixed eps and only once. Then, do this in every iteration with the tuned eps.
+# TODO: Thinning & burn-in.
+# TODO: Increase the trace plot dynamic (non-dynamic proposal scale tuning).
+# TODO: Gamma prior, truncated normal proposal.
+# TODO: Observe the ABC kernel scale.
 
 
 # TODO: Store the sampler state so that we can load it and continue sampling some more.
