@@ -70,23 +70,23 @@ class CauchyKernel(Kernel):
 class ProposalDistribution:
     def __init__(self,
                  distribution_f,
-                 param_update: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+                 param_update: Optional[Callable[[float, Dict[str, Any]], Dict[str, Any]]] = None,
                  **kwargs):
         self.distribution_f = distribution_f
         self.param_update = param_update
         self.kwargs = kwargs
 
-    def sample(self, size: Optional[int] = None, random_state=None):
+    def sample(self, center: float, size: Optional[int] = None, random_state=None):
         if self.param_update is not None:
-            params = self.param_update(self.kwargs.copy())
+            params = self.param_update(center, self.kwargs.copy())
         else:
             params = self.kwargs
 
-        return self.distribution_f.rvs(loc=0.0, size=size, random_state=random_state, **params)
+        return self.distribution_f.rvs(loc=center, size=size, random_state=random_state, **params)
 
     def log_prob(self, x: float, center: float):
         if self.param_update is not None:
-            params = self.param_update(self.kwargs.copy())
+            params = self.param_update(center, self.kwargs.copy())
         else:
             params = self.kwargs
 
@@ -150,8 +150,12 @@ class MH(abc.ABC):
             self._steps_until_tune = self.tune_interval
             self._accepted = 0
 
-        delta = self._sample_from_proposal()
-        theta_new = {var_name: var_value + delta[var_name] * self._scaling for var_name, var_value in theta_old.items()}
+        theta_new = self._sample_from_proposal(theta_old)
+
+        if self.tune:
+            # Translate to center, scale, translate back.
+            theta_new = {var_name: theta_old[var_name] + (var_value - theta_old[var_name]) * self._scaling for
+                         var_name, var_value in theta_new.items()}
 
         log_ratio = 0.0
 
@@ -220,8 +224,8 @@ class MH(abc.ABC):
             # Increase by 10 percent.
             self._scaling *= 1.1
 
-    def _sample_from_proposal(self) -> Dict[str, float]:
-        return {var_name: dist.sample(random_state=self.random_state) for var_name, dist in
+    def _sample_from_proposal(self, theta_old: Dict[str, float]) -> Dict[str, float]:
+        return {var_name: dist.sample(center=theta_old[var_name], random_state=self.random_state) for var_name, dist in
                 self.proposal.items()}
 
     @abc.abstractmethod
@@ -292,7 +296,6 @@ class PMH(MH, abc.ABC):
 
 # TODO: Thinning & burn-in.
 # TODO: Increase the trace plot dynamic (non-dynamic proposal scale tuning).
-# TODO: Gamma prior, truncated normal proposal.
 # TODO: Add an optinal `is_symmetric` parameter to the proposal & filter in the proposal log-prob loop.
 
 
