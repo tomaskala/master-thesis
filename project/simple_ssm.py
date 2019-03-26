@@ -95,7 +95,7 @@ def main():
     }
 
     proposal = {
-        'sigma2_v': ProposalDistribution(distribution_f=stats.norm, scale=0.15),
+        'sigma2_v': ProposalDistribution(distribution_f=stats.norm, scale=0.15, is_symmetric=True),
         # 'sigma2_w': ProposalDistribution(distribution_f=stats.norm, scale=0.08),
     }
 

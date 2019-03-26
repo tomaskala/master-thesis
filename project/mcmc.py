@@ -68,12 +68,25 @@ class CauchyKernel(Kernel):
 
 
 class ProposalDistribution:
+    """
+    Proposal kernel for the Metropolis-Hastings algorithm.
+    :param distribution_f: scipy distribution representing the kernel
+    :param param_update: optional function mapping the current center and current parameter values to new
+           parameter values; called before each sampling and log-probability evaluation (useful to modify
+           the truncated Gaussian parameters, since scipy cannot be bothered to do that automatically)
+    :param is_symmetric: optional indicator specifying that this kernel is symmetric, and it is not necessary
+           to evaluate it when computing the acceptance ratio
+    :param kwargs: additional arguments passed to the underlying distribution
+    """
+
     def __init__(self,
                  distribution_f,
                  param_update: Optional[Callable[[float, Dict[str, Any]], Dict[str, Any]]] = None,
+                 is_symmetric: bool = False,
                  **kwargs):
         self.distribution_f = distribution_f
         self.param_update = param_update
+        self.is_symmetric = is_symmetric
         self.kwargs = kwargs
 
     def sample(self, center: float, size: Optional[int] = None, random_state=None):
@@ -166,7 +179,7 @@ class MH(abc.ABC):
         if not np.isfinite(log_ratio):
             return theta_old, loglik_hat_old, False  # Rejected.
 
-        for var_name, proposal in self.proposal.items():
+        for var_name, proposal in filter(lambda proposal_kv: not proposal_kv[1].is_symmetric, self.proposal.items()):
             log_ratio += proposal.log_prob(theta_old[var_name], theta_new[var_name])
             log_ratio -= proposal.log_prob(theta_new[var_name], theta_old[var_name])
 
@@ -296,7 +309,6 @@ class PMH(MH, abc.ABC):
 
 # TODO: Thinning & burn-in.
 # TODO: Increase the trace plot dynamic (non-dynamic proposal scale tuning).
-# TODO: Add an optinal `is_symmetric` parameter to the proposal & filter in the proposal log-prob loop.
 
 
 # TODO: Store the sampler state so that we can load it and continue sampling some more.
