@@ -83,6 +83,8 @@ def plot_parameters(thetas: List[Dict[str, float]],
         title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values[burn_in::step]))
 
         if true_values is not None and param_name in true_values:
+            ax1.axhline(true_values[param_name], color='red', lw=2)
+
             ax3.axvline(true_values[param_name], color='red', lw=2)
             title += ', true value: {:.03f}'.format(true_values[param_name])
 
