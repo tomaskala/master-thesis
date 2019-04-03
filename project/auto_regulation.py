@@ -1,3 +1,8 @@
+"""
+Bayesian Parameter Inference for Stochastic Biochemical Network Models Using Particle Markov Chain Monte Carlo,
+source: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3262293/pdf/rsfs20110047.pdf
+"""
+
 import os
 import pickle
 from typing import Dict, Tuple
@@ -11,10 +16,39 @@ from utils import check_random_state, plot_parameters
 
 class ABCMHAutoRegulation(ABCMH):
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
-        pass
+        pass  # TODO: Section 4.2.
 
     def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> np.array:
         return state[1] + 2 * state[2]
+
+    def _hazard_function(self, state: np.ndarray, theta: Dict[str, float]):
+        c1 = np.exp(theta['lc1'])
+        c2 = np.exp(theta['lc2'])
+        c3 = np.exp(theta['lc3'])
+        c4 = np.exp(theta['lc4'])
+        c5 = self.const['c5']
+        c6 = self.const['c6']
+        c7 = np.exp(theta['lc7'])
+        c8 = np.exp(theta['lc8'])
+
+        rna = state[0]
+        p = state[1]
+        p2 = state[2]
+        dna = state[3]
+
+        out = np.array([
+            c1 * dna * p2,
+            c2 * (self.const['k'] - dna),
+            c3 * dna,
+            c4 * rna,
+            c5 * p * (p - 1) / 2,
+            c6 * p2,
+            c7 * rna,
+            c8 * p
+        ])
+
+        assert out.shape == (8, self.n_particles)
+        return out
 
 
 class PMHAutoRegulation(PMH):
@@ -26,6 +60,7 @@ class PMHAutoRegulation(PMH):
         return stats.norm.logpdf(y=y[0], loc=loc, scale=self.const['observation_std'])
 
 
+# TODO: Gillespie algorithm.
 def simulate_xy(path: str, T: int, random_state=None) -> Tuple[np.ndarray, np.ndarray]:
     if os.path.exists(path):
         with open(path, mode='rb') as f:
@@ -62,9 +97,17 @@ def main():
         os.makedirs(auto_regulation_path)
 
     const = {
+        'k': 10,
+        'm': 5,
         'c5': 0.1,
         'c6': 0.9,
-        'observation_std': 2.0
+        'observation_std': 2.0,
+        'S': np.array([
+            [0, 0, 1, 0, 0, 0, -1, 0],
+            [0, 0, 0, 1, -2, 2, 0, -1],
+            [-1, 1, 0, 0, 1, -1, 0, 0],
+            [-1, 1, 0, 0, 0, 0, 0, 0]
+        ])
     }
 
     # log(c_i) ~ U(-7,2), but in SciPy, the uniform distribution is parameterized as U(loc,loc+scale).
