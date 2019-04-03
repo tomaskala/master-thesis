@@ -1,6 +1,6 @@
 import numbers
 from statsmodels.graphics.tsaplots import plot_acf
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +18,7 @@ def check_random_state(random_state) -> np.random.RandomState:
 
 
 def plot_parameters(thetas: List[Dict[str, float]],
+                    transforms: Optional[Dict[str, Callable[[float], float]]] = None,
                     pretty_names: Optional[Dict[str, str]] = None,
                     true_values: Optional[Dict[str, float]] = None,
                     priors: Optional[Dict[str, rv_continuous]] = None,
@@ -31,6 +32,8 @@ def plot_parameters(thetas: List[Dict[str, float]],
     Plot the histograms of the sampled theta, representing the estimate of p(theta|y),
     possibly along with some additional quantities.
     :param thetas: list of sampled parameters
+    :param transforms: optional dictionary of transformations to apply on the individual parameters as well as
+           on the true values (if given) before plotting them
     :param pretty_names: optional mapping from variable names to how they should be shown in the plot title
     :param true_values: optional mapping from variable names to their true values, will be shown in the plots
     :param priors: optional mapping from variable names to the prior distributions, will plot the densities
@@ -46,7 +49,10 @@ def plot_parameters(thetas: List[Dict[str, float]],
 
     for theta in thetas:
         for param_name, param_value in theta.items():
-            params2samples[param_name].append(param_value)
+            if transforms is not None and param_name in transforms:
+                params2samples[param_name].append(transforms[param_name](param_value))
+            else:
+                params2samples[param_name].append(param_value)
 
     for param_name, param_values in params2samples.items():
         if kernel_scales is None or len(kernel_scales) <= 1:
@@ -83,12 +89,17 @@ def plot_parameters(thetas: List[Dict[str, float]],
         title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values[burn_in::step]))
 
         if true_values is not None and param_name in true_values:
-            ax1.axhline(true_values[param_name], color='red', lw=2)
+            if transforms is not None and param_name in transforms:
+                true_value_to_plot = transforms[param_name](true_values[param_name])
+            else:
+                true_value_to_plot = true_values[param_name]
 
-            ax3.axvline(true_values[param_name], color='red', lw=2)
-            title += ', true value: {:.03f}'.format(true_values[param_name])
+            ax1.axhline(true_value_to_plot, color='red', lw=2)
 
-            plt.suptitle(title)
+            ax3.axvline(true_value_to_plot, color='red', lw=2)
+            title += ', true value: {:.03f}'.format(true_value_to_plot)
+
+        plt.suptitle(title)
 
         if paths is not None and param_name in paths:
             fig.savefig(paths[param_name])
