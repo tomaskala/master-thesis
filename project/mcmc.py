@@ -128,6 +128,13 @@ class MH(abc.ABC):
         self._accepted = 0
 
     def do_inference(self, y: np.ndarray) -> List[Dict[str, float]]:
+        assert y.ndim == 2, 'the dimensionality of `y` must be y-dim x time series length'
+
+        # Transpose the observations to be shaped (time series length x y-dim) for faster indexing.
+        # The input is accepted in the transposed way, as it is more straightforward to generate the data in that
+        # way, and it is also more natural.
+        y = y.T.copy()
+
         theta_init = self._mh_init()
         loglik_hat = self._log_likelihood_estimate(y, theta_init)
 
@@ -303,7 +310,7 @@ class PMH(MH, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _observation_log_prob(self, y: float, state: np.ndarray, theta: Dict[str, float]) -> float:
+    def _observation_log_prob(self, y: np.ndarray, state: np.ndarray, theta: Dict[str, float]) -> float:
         pass
 
 
@@ -337,13 +344,22 @@ class ABCMH(MH, abc.ABC):
         self.const = const
 
         if kernel == 'gaussian':
-            self.kernel = GaussianKernel()
+            self.kernel_f = GaussianKernel
         elif kernel == 'cauchy':
-            self.kernel = CauchyKernel()
+            self.kernel_f = CauchyKernel
         else:
             raise ValueError('Unknown kernel: {}.'.format(kernel))
 
+        self.kernel = []
         self.noisy_abc = noisy_abc
+
+    def do_inference(self, y: np.ndarray) -> List[Dict[str, float]]:
+        assert y.ndim == 2, 'the dimensionality of `y` must be y-dim x time series length'
+
+        # Create a separate kernel for each y dimension.
+        self.kernel = [self.kernel_f() for _ in range(y.shape[0])]
+
+        return super(ABCMH, self).do_inference(y=y)
 
     def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
         T = y.shape[0]
@@ -364,13 +380,17 @@ class ABCMH(MH, abc.ABC):
             x = self._transition(state=x[:, indices], t=t, theta=theta)
             u = self._measurement_model(state=x, theta=theta)
 
+            assert y[t - 1].shape[0] == u.shape[0]
+
             u_alpha = self._alphath_closest(u=u, y=y[t - 1])
-            self.kernel.tune_scale(y=y[t - 1], u=u_alpha, p=self.hpr_p)
+            assert u_alpha.shape[0] == u.shape[0]
+
+            self._tune_kernel_scales(y=y[t - 1], u=u_alpha)
 
             if self.noisy_abc:
-                y[t - 1] += self.kernel.sample(random_state=self.random_state)
+                y[t - 1] += self._sample_from_kernel()
 
-            log_w[t] = self.kernel.log_kernel(u=u, center=y[t - 1])
+            log_w[t] = self._log_kernel(u=u, center=y[t - 1])
 
         out = np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
 
@@ -380,16 +400,25 @@ class ABCMH(MH, abc.ABC):
         else:
             return out
 
-    def _alphath_closest(self, u: np.ndarray, y: float) -> float:
-        # FIXME: This assumes 1D y and u.
-        distances_squared = np.power(y - u, 2)
+    def _alphath_closest(self, u: np.ndarray, y: np.ndarray) -> np.ndarray:
+        distances_squared = np.power(y[:, np.newaxis] - u, 2)
 
         # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
         # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
-        alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1, axis=-1)[
-            self.n_particles_covered - 1]
+        alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1, axis=-1)[:,
+                              self.n_particles_covered - 1]
 
-        return u[alphath_closest_idx]
+        return u[np.arange(u.shape[0]), alphath_closest_idx]
+
+    def _tune_kernel_scales(self, y: np.ndarray, u: np.ndarray):
+        for y_elem, u_elem, kernel in zip(y, u, self.kernel):
+            kernel.tune_scale(y=y_elem, u=u_elem, p=self.hpr_p)
+
+    def _sample_from_kernel(self) -> np.ndarray:
+        return np.array([kernel.sample(random_state=self.random_state) for kernel in self.kernel], dtype=float)
+
+    def _log_kernel(self, u: np.ndarray, center: np.ndarray) -> float:
+        return sum(kernel.log_kernel(u=u[i], center=center[i]) for i, kernel in enumerate(self.kernel))
 
     @abc.abstractmethod
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:

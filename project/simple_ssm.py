@@ -25,10 +25,9 @@ class ABCMHSimpleSSM(ABCMH):
     def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> np.array:
         assert state.shape == (1, self.n_particles)
 
-        x = state[0]
-        out = np.power(x, 2) / 20
+        out = np.power(state, 2) / 20
 
-        assert out.shape == (self.n_particles,)
+        assert out.shape == (1, self.n_particles)
         return out
 
 
@@ -44,10 +43,10 @@ class PMHSimpleSSM(PMH):
         assert out.shape == state.shape
         return out
 
-    def _observation_log_prob(self, y: float, state: np.ndarray, theta: Dict[str, float]) -> float:
+    def _observation_log_prob(self, y: np.ndarray, state: np.ndarray, theta: Dict[str, float]) -> float:
         x = state[0]
         loc = np.power(x, 2) / 20
-        return stats.norm.logpdf(x=y, loc=loc, scale=np.sqrt(theta['sigma2_w']))
+        return stats.norm.logpdf(x=y[0], loc=loc, scale=np.sqrt(self.const['sigma2_w']))
 
 
 def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: float, random_state=None) -> Tuple[
@@ -72,9 +71,9 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
             y[n] = np.power(x[n], 2) / 20 + w
 
         with open(path, mode='wb') as f:
-            pickle.dump((x, y), f)
+            pickle.dump((x, y[np.newaxis, :]), f)
 
-        return np.append(x_0, x), y
+        return np.append(x_0, x), y[np.newaxis, :]
 
 
 def update_truncnorm(center: float, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -93,7 +92,9 @@ def main():
     if not os.path.exists(simple_ssm_path):
         os.makedirs(simple_ssm_path)
 
-    const = {}
+    const = {
+        'sigma2_w': 1.0
+    }
 
     prior = {
         # 'sigma2_v': stats.uniform(0.0, 30.0),
@@ -101,6 +102,7 @@ def main():
         # 'sigma2_w': stats.invgamma(a=0.01, scale=0.01)
     }
 
+    # TODO: scale=0.15 works? with tuning.
     proposal = {
         # 'sigma2_v': ProposalDistribution(distribution_f=stats.norm, scale=0.15, is_symmetric=True),
         'sigma2_v': ProposalDistribution(distribution_f=stats.truncnorm, param_update=update_truncnorm, scale=0.15,
@@ -126,7 +128,7 @@ def main():
             mcmc = pickle.load(f)
     else:
         if algorithm == 'abcmh':
-            mcmc = ABCMHSimpleSSM(n_samples=20000,
+            mcmc = ABCMHSimpleSSM(n_samples=2000,
                                   n_particles=500,
                                   alpha=0.9,
                                   hpr_p=0.95,
@@ -135,9 +137,10 @@ def main():
                                   prior=prior,
                                   proposal=proposal,
                                   kernel='gaussian',
-                                  noisy_abc=True,
+                                  noisy_abc=False,
                                   theta_init=theta_init,
-                                  random_state=1)
+                                  random_state=1,
+                                  tune=True)
         else:
             mcmc = PMHSimpleSSM(n_samples=2000,  # Paper: 50000 samples, 10000 burn-in.
                                 n_particles=500,  # Paper: 5000 particles.
@@ -213,8 +216,8 @@ def main():
     #
     #     plt.show()
 
-    plot_parameters(theta, pretty_names=pretty_names, true_values=true_values, priors=prior,
-                    kernel_scales=mcmc.kernel.scale_log, bins=200, max_lags=100)
+    plot_parameters(thetas=theta, pretty_names=pretty_names, true_values=true_values, priors=prior,
+                    kernel_scales=mcmc.kernel[0].scale_log if isinstance(mcmc, ABCMH) else None, bins=200, max_lags=100)
 
 
 if __name__ == '__main__':
