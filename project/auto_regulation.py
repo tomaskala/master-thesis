@@ -3,6 +3,7 @@ Bayesian Parameter Inference for Stochastic Biochemical Network Models Using Par
 source: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3262293/pdf/rsfs20110047.pdf
 """
 
+from joblib import Parallel, delayed
 import os
 import pickle
 from typing import Dict, Tuple
@@ -58,6 +59,65 @@ def hazard_function(state: np.ndarray, theta: Dict[str, float], const: Dict[str,
 
 class ABCMHAutoRegulation(ABCMH):
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
+        # state_new = np.empty(shape=state.shape, dtype=state.dtype)
+        #
+        # for i in range(self.n_particles):
+        #     state_new[:, i] = self._simulate_state(state[:, i], theta)
+        state_new = Parallel(n_jobs=4)(delayed(self._simulate_state)(state[:, i], theta) for i in range(self.n_particles))
+
+        out = np.array(state_new).T
+        assert out.shape == (4, self.n_particles)
+        return out
+
+    def _simulate_state(self, state: np.ndarray, theta: Dict[str, float], T: int = 1) -> np.ndarray:
+        t = 0.0
+
+        while t < T:
+            h = hazard_function(state, theta, self.const)
+            h_sum = np.sum(h)
+            p = h / h_sum
+
+            reaction_type = self.random_state.choice(a=p.shape[0], p=p)
+            dt = -np.log(self.random_state.rand()) / h_sum
+
+            state += self.const['S'][:, reaction_type]
+            t += dt
+
+        return state
+
+    def _transition_batch(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
+        t = 0.0
+        T = 1
+
+        while t < T:
+            h = hazard_function(state, theta, self.const)  # TODO: Change order from C to F? Optional argument?
+            assert h.shape == (8, self.n_particles)
+
+            h_sum = np.sum(h, axis=0)
+            assert h_sum.shape == (self.n_particles,)
+
+            p = h / h_sum[np.newaxis, :]
+            assert p.shape == (8, self.n_particles)
+
+            reaction_type = self._random_choice_along_cols(p)
+            assert reaction_type.shape == (self.n_particles,)
+            # dt = -np.log(self.random_state.rand()) / h_sum
+
+            state = state + self.const['S'][:, reaction_type]
+            break  # TODO: Simulate fully.
+            # t += dt
+
+        return state
+
+    def _random_choice_along_cols(self, p: np.ndarray) -> np.ndarray:
+        out = np.empty(shape=self.n_particles, dtype=int)
+
+        for i in range(self.n_particles):
+            out[i] = self.random_state.choice(a=8, p=p[:, i])
+
+        return out
+
+    def _transition2(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
         # This is the diffusion bridges version of the transition distribution.
         S = self.const['S']
         m = self.const['m']
@@ -67,7 +127,7 @@ class ABCMHAutoRegulation(ABCMH):
             h = hazard_function(state, theta, self.const)
             assert h.shape == (8, self.n_particles)
 
-            h_diag = batch_diag(h.T)
+            h_diag = batch_diag(h)
             assert h_diag.shape == (self.n_particles, 8, 8)
 
             alpha = S @ h * dt
@@ -77,7 +137,7 @@ class ABCMHAutoRegulation(ABCMH):
             assert beta.shape == (self.n_particles, 4, 4)
 
             w = stats.norm.rvs(loc=0.0, scale=1.0, size=state.T.shape, random_state=self.random_state)
-            assert w.shape == (4, self.n_particles)
+            assert w.shape == (self.n_particles, 4)
 
             state = alpha + (np.sqrt(beta) @ w[..., np.newaxis]).reshape(self.n_particles, 4).T
             assert state.shape == (4, self.n_particles)
@@ -85,7 +145,7 @@ class ABCMHAutoRegulation(ABCMH):
         return state
 
     def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> np.array:
-        return state[1] + 2 * state[2]
+        return np.array([state[1] + 2 * state[2]])
 
 
 class PMHAutoRegulation(PMH):
@@ -99,7 +159,7 @@ class PMHAutoRegulation(PMH):
             h = hazard_function(state, theta, self.const)
             assert h.shape == (8, self.n_particles)
 
-            h_diag = batch_diag(h.T)
+            h_diag = batch_diag(h)
             assert h_diag.shape == (self.n_particles, 8, 8)
 
             alpha = S @ h * dt
@@ -109,7 +169,7 @@ class PMHAutoRegulation(PMH):
             assert beta.shape == (self.n_particles, 4, 4)
 
             w = stats.norm.rvs(loc=0.0, scale=1.0, size=state.T.shape, random_state=self.random_state)
-            assert w.shape == (4, self.n_particles)
+            assert w.shape == (self.n_particles, 4)
 
             state = alpha + (np.sqrt(beta) @ w[..., np.newaxis]).reshape(self.n_particles, 4).T
             assert state.shape == (4, self.n_particles)
@@ -118,7 +178,7 @@ class PMHAutoRegulation(PMH):
 
     def _observation_log_prob(self, y: np.ndarray, state: np.ndarray, theta: Dict[str, float]) -> float:
         loc = state[1] + 2 * state[2]
-        return stats.norm.logpdf(y=y[0], loc=loc, scale=self.const['observation_std'])
+        return stats.norm.logpdf(x=y[0], loc=loc, scale=self.const['observation_std'])
 
 
 # Gillespie algorithm.
@@ -137,11 +197,6 @@ def simulate_xy(path: str, T: int, theta: Dict[str, float], const: Dict[str, flo
         x_prev = x_0
         t = 0.0
 
-        # rna = state[0]
-        # p = state[1]
-        # p2 = state[2]
-        # dna = state[3]
-
         while t < T:
             h = hazard_function(x_prev, theta, const)
             h_sum = np.sum(h)
@@ -151,29 +206,31 @@ def simulate_xy(path: str, T: int, theta: Dict[str, float], const: Dict[str, flo
             dt = -np.log(random_state.rand()) / h_sum
             x_next = x_prev.copy()
 
-            if reaction_type + 1 == 1:
-                x_next[3] = const['k']
-            elif reaction_type + 1 == 2:
-                x_next[2] += 1
-                x_next[3] += 1
-            elif reaction_type + 1 == 3:
-                x_next[0] += 1
-                x_next[3] += 1
-            elif reaction_type + 1 == 4:
-                x_next[0] += 1
-                x_next[1] += 1
-            elif reaction_type + 1 == 5:
-                x_next[2] += 1
-            elif reaction_type + 1 == 6:
-                x_next[1] += 2
-            elif reaction_type + 1 == 7:
-                pass  # Nothing.
-            elif reaction_type + 1 == 8:
-                pass  # Nothing.
-            elif reaction_type + 1 == 9:
-                pass
-            else:
-                raise ValueError('This should never happen!')
+            x_next += const['S'][:, reaction_type]
+
+            # if reaction_type + 1 == 1:
+            #     x_next[3] = const['k']
+            # elif reaction_type + 1 == 2:
+            #     x_next[2] += 1
+            #     x_next[3] += 1
+            # elif reaction_type + 1 == 3:
+            #     x_next[0] += 1
+            #     x_next[3] += 1
+            # elif reaction_type + 1 == 4:
+            #     x_next[0] += 1
+            #     x_next[1] += 1
+            # elif reaction_type + 1 == 5:
+            #     x_next[2] += 1
+            # elif reaction_type + 1 == 6:
+            #     x_next[1] += 2
+            # elif reaction_type + 1 == 7:
+            #     pass  # Nothing.
+            # elif reaction_type + 1 == 8:
+            #     pass  # Nothing.
+            # elif reaction_type + 1 == 9:
+            #     pass
+            # else:
+            #     raise ValueError('This should never happen!')
 
             t += dt
 
@@ -229,16 +286,23 @@ def main():
     }
 
     proposal = {
-        'lc1': ProposalDistribution(distribution_f=stats.norm, scale=1.0),
-        'lc2': ProposalDistribution(distribution_f=stats.norm, scale=1.0),
-        'lc3': ProposalDistribution(distribution_f=stats.norm, scale=1.0),
-        'lc4': ProposalDistribution(distribution_f=stats.norm, scale=1.0),
-        'lc7': ProposalDistribution(distribution_f=stats.norm, scale=1.0),
-        'lc8': ProposalDistribution(distribution_f=stats.norm, scale=1.0)
+        'lc1': ProposalDistribution(distribution_f=stats.norm, scale=0.1),
+        'lc2': ProposalDistribution(distribution_f=stats.norm, scale=0.1),
+        'lc3': ProposalDistribution(distribution_f=stats.norm, scale=0.1),
+        'lc4': ProposalDistribution(distribution_f=stats.norm, scale=0.1),
+        'lc7': ProposalDistribution(distribution_f=stats.norm, scale=0.1),
+        'lc8': ProposalDistribution(distribution_f=stats.norm, scale=0.1)
 
     }
 
-    theta_init = None
+    theta_init = {
+        'lc1': np.log(0.1),
+        'lc2': np.log(0.7),
+        'lc3': np.log(0.35),
+        'lc4': np.log(0.2),
+        'lc7': np.log(0.3),
+        'lc8': np.log(0.1)
+    }
     state_init = np.array([8, 8, 8, 5])
 
     sampler_path = os.path.join(auto_regulation_path, 'sampler.pickle')
@@ -249,7 +313,7 @@ def main():
     else:
         if algorithm == 'abcmh':
             mcmc = ABCMHAutoRegulation(n_samples=2000,
-                                       n_particles=500,
+                                       n_particles=100,
                                        alpha=0.9,
                                        hpr_p=0.95,
                                        state_init=state_init,
@@ -263,7 +327,7 @@ def main():
                                        tune=True)
         else:
             mcmc = PMHAutoRegulation(n_samples=2000,
-                                     n_particles=500,
+                                     n_particles=100,
                                      state_init=state_init,
                                      const=const,
                                      prior=prior,
