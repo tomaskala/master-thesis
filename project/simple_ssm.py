@@ -71,7 +71,7 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
             y[n] = np.power(x[n], 2) / 20 + w
 
         with open(path, mode='wb') as f:
-            pickle.dump((x, y[np.newaxis, :]), f)
+            pickle.dump((np.append(x_0, x), y[np.newaxis, :]), f)
 
         return np.append(x_0, x), y[np.newaxis, :]
 
