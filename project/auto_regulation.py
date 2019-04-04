@@ -14,9 +14,48 @@ from mcmc import ABCMH, PMH, ProposalDistribution
 from utils import check_random_state, plot_parameters
 
 
+def batch_diag(array: np.ndarray) -> np.ndarray:
+    """
+    Apply the `diag` operation on each row of the 2D input array, producing a 3D array with the individual
+    diagonal matrices stored along the first dimension.
+    :param array: array shaped (M, N)
+    :return: array shaped (N, M, M)
+    """
+    rows, cols = array.shape
+    out = np.zeros((cols, rows, rows), dtype=array.dtype)
+    diag = np.arange(rows)
+    out[:, diag, diag] = array.T
+
+    return out
+
+
 class ABCMHAutoRegulation(ABCMH):
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
-        pass  # TODO: Section 4.2.
+        S = self.const['S']
+        m = self.const['m']
+        observation_std = self.const['observation_std']
+        dt = 1.0 / m
+
+        for i in range(m):
+            h = self._hazard_function(state, theta)
+            assert h.shape == (8, self.n_particles)
+
+            h_diag = batch_diag(h.T)
+            assert h_diag.shape == (self.n_particles, 8, 8)
+
+            alpha = S @ h * dt
+            assert alpha.shape == (4, self.n_particles)
+
+            beta = S @ h_diag @ S.T * dt
+            assert beta.shape == (self.n_particles, 4, 4)
+
+            w = stats.norm.rvs(loc=0.0, scale=observation_std, size=state.T.shape, random_state=self.random_state)
+            assert w.shape == (4, self.n_particles)
+
+            state = alpha + (np.sqrt(beta) @ w[..., np.newaxis]).reshape(self.n_particles, 4).T
+            assert state.shape == (4, self.n_particles)
+
+        return state
 
     def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> np.array:
         return state[1] + 2 * state[2]
@@ -53,11 +92,64 @@ class ABCMHAutoRegulation(ABCMH):
 
 class PMHAutoRegulation(PMH):
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
-        pass
+        S = self.const['S']
+        m = self.const['m']
+        observation_std = self.const['observation_std']
+        dt = 1.0 / m
+
+        for i in range(m):
+            h = self._hazard_function(state, theta)
+            assert h.shape == (8, self.n_particles)
+
+            h_diag = batch_diag(h.T)
+            assert h_diag.shape == (self.n_particles, 8, 8)
+
+            alpha = S @ h * dt
+            assert alpha.shape == (4, self.n_particles)
+
+            beta = S @ h_diag @ S.T * dt
+            assert beta.shape == (self.n_particles, 4, 4)
+
+            w = stats.norm.rvs(loc=0.0, scale=observation_std, size=state.T.shape, random_state=self.random_state)
+            assert w.shape == (4, self.n_particles)
+
+            state = alpha + (np.sqrt(beta) @ w[..., np.newaxis]).reshape(self.n_particles, 4).T
+            assert state.shape == (4, self.n_particles)
+
+        return state
 
     def _observation_log_prob(self, y: np.ndarray, state: np.ndarray, theta: Dict[str, float]) -> float:
         loc = state[1] + 2 * state[2]
         return stats.norm.logpdf(y=y[0], loc=loc, scale=self.const['observation_std'])
+
+    def _hazard_function(self, state: np.ndarray, theta: Dict[str, float]):
+        c1 = np.exp(theta['lc1'])
+        c2 = np.exp(theta['lc2'])
+        c3 = np.exp(theta['lc3'])
+        c4 = np.exp(theta['lc4'])
+        c5 = self.const['c5']
+        c6 = self.const['c6']
+        c7 = np.exp(theta['lc7'])
+        c8 = np.exp(theta['lc8'])
+
+        rna = state[0]
+        p = state[1]
+        p2 = state[2]
+        dna = state[3]
+
+        out = np.array([
+            c1 * dna * p2,
+            c2 * (self.const['k'] - dna),
+            c3 * dna,
+            c4 * rna,
+            c5 * p * (p - 1) / 2,
+            c6 * p2,
+            c7 * rna,
+            c8 * p
+        ])
+
+        assert out.shape == (8, self.n_particles)
+        return out
 
 
 # TODO: Gillespie algorithm.
