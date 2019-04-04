@@ -33,7 +33,6 @@ class ABCMHAutoRegulation(ABCMH):
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
         S = self.const['S']
         m = self.const['m']
-        observation_std = self.const['observation_std']
         dt = 1.0 / m
 
         for i in range(m):
@@ -49,7 +48,7 @@ class ABCMHAutoRegulation(ABCMH):
             beta = S @ h_diag @ S.T * dt
             assert beta.shape == (self.n_particles, 4, 4)
 
-            w = stats.norm.rvs(loc=0.0, scale=observation_std, size=state.T.shape, random_state=self.random_state)
+            w = stats.norm.rvs(loc=0.0, scale=1.0, size=state.T.shape, random_state=self.random_state)
             assert w.shape == (4, self.n_particles)
 
             state = alpha + (np.sqrt(beta) @ w[..., np.newaxis]).reshape(self.n_particles, 4).T
@@ -75,7 +74,7 @@ class ABCMHAutoRegulation(ABCMH):
         p2 = state[2]
         dna = state[3]
 
-        out = np.array([
+        return np.array([
             c1 * dna * p2,
             c2 * (self.const['k'] - dna),
             c3 * dna,
@@ -86,15 +85,11 @@ class ABCMHAutoRegulation(ABCMH):
             c8 * p
         ])
 
-        assert out.shape == (8, self.n_particles)
-        return out
-
 
 class PMHAutoRegulation(PMH):
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
         S = self.const['S']
         m = self.const['m']
-        observation_std = self.const['observation_std']
         dt = 1.0 / m
 
         for i in range(m):
@@ -110,7 +105,7 @@ class PMHAutoRegulation(PMH):
             beta = S @ h_diag @ S.T * dt
             assert beta.shape == (self.n_particles, 4, 4)
 
-            w = stats.norm.rvs(loc=0.0, scale=observation_std, size=state.T.shape, random_state=self.random_state)
+            w = stats.norm.rvs(loc=0.0, scale=1.0, size=state.T.shape, random_state=self.random_state)
             assert w.shape == (4, self.n_particles)
 
             state = alpha + (np.sqrt(beta) @ w[..., np.newaxis]).reshape(self.n_particles, 4).T
@@ -137,7 +132,7 @@ class PMHAutoRegulation(PMH):
         p2 = state[2]
         dna = state[3]
 
-        out = np.array([
+        return np.array([
             c1 * dna * p2,
             c2 * (self.const['k'] - dna),
             c3 * dna,
@@ -147,9 +142,6 @@ class PMHAutoRegulation(PMH):
             c7 * rna,
             c8 * p
         ])
-
-        assert out.shape == (8, self.n_particles)
-        return out
 
 
 # TODO: Gillespie algorithm.
