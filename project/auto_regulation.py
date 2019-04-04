@@ -29,14 +29,42 @@ def batch_diag(array: np.ndarray) -> np.ndarray:
     return out
 
 
+def hazard_function(state: np.ndarray, theta: Dict[str, float], const: Dict[str, float]):
+    c1 = np.exp(theta['lc1'])
+    c2 = np.exp(theta['lc2'])
+    c3 = np.exp(theta['lc3'])
+    c4 = np.exp(theta['lc4'])
+    c5 = const['c5']
+    c6 = const['c6']
+    c7 = np.exp(theta['lc7'])
+    c8 = np.exp(theta['lc8'])
+
+    rna = state[0]
+    p = state[1]
+    p2 = state[2]
+    dna = state[3]
+
+    return np.array([
+        c1 * dna * p2,
+        c2 * (const['k'] - dna),
+        c3 * dna,
+        c4 * rna,
+        c5 * p * (p - 1) / 2,
+        c6 * p2,
+        c7 * rna,
+        c8 * p
+    ])
+
+
 class ABCMHAutoRegulation(ABCMH):
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
+        # This is the diffusion bridges version of the transition distribution.
         S = self.const['S']
         m = self.const['m']
         dt = 1.0 / m
 
         for i in range(m):
-            h = self._hazard_function(state, theta)
+            h = hazard_function(state, theta, self.const)
             assert h.shape == (8, self.n_particles)
 
             h_diag = batch_diag(h.T)
@@ -59,41 +87,16 @@ class ABCMHAutoRegulation(ABCMH):
     def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> np.array:
         return state[1] + 2 * state[2]
 
-    def _hazard_function(self, state: np.ndarray, theta: Dict[str, float]):
-        c1 = np.exp(theta['lc1'])
-        c2 = np.exp(theta['lc2'])
-        c3 = np.exp(theta['lc3'])
-        c4 = np.exp(theta['lc4'])
-        c5 = self.const['c5']
-        c6 = self.const['c6']
-        c7 = np.exp(theta['lc7'])
-        c8 = np.exp(theta['lc8'])
-
-        rna = state[0]
-        p = state[1]
-        p2 = state[2]
-        dna = state[3]
-
-        return np.array([
-            c1 * dna * p2,
-            c2 * (self.const['k'] - dna),
-            c3 * dna,
-            c4 * rna,
-            c5 * p * (p - 1) / 2,
-            c6 * p2,
-            c7 * rna,
-            c8 * p
-        ])
-
 
 class PMHAutoRegulation(PMH):
     def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
+        # This is the diffusion bridges version of the transition distribution.
         S = self.const['S']
         m = self.const['m']
         dt = 1.0 / m
 
         for i in range(m):
-            h = self._hazard_function(state, theta)
+            h = hazard_function(state, theta, self.const)
             assert h.shape == (8, self.n_particles)
 
             h_diag = batch_diag(h.T)
@@ -117,58 +120,79 @@ class PMHAutoRegulation(PMH):
         loc = state[1] + 2 * state[2]
         return stats.norm.logpdf(y=y[0], loc=loc, scale=self.const['observation_std'])
 
-    def _hazard_function(self, state: np.ndarray, theta: Dict[str, float]):
-        c1 = np.exp(theta['lc1'])
-        c2 = np.exp(theta['lc2'])
-        c3 = np.exp(theta['lc3'])
-        c4 = np.exp(theta['lc4'])
-        c5 = self.const['c5']
-        c6 = self.const['c6']
-        c7 = np.exp(theta['lc7'])
-        c8 = np.exp(theta['lc8'])
 
-        rna = state[0]
-        p = state[1]
-        p2 = state[2]
-        dna = state[3]
-
-        return np.array([
-            c1 * dna * p2,
-            c2 * (self.const['k'] - dna),
-            c3 * dna,
-            c4 * rna,
-            c5 * p * (p - 1) / 2,
-            c6 * p2,
-            c7 * rna,
-            c8 * p
-        ])
-
-
-# TODO: Gillespie algorithm.
-def simulate_xy(path: str, T: int, random_state=None) -> Tuple[np.ndarray, np.ndarray]:
+# Gillespie algorithm.
+def simulate_xy(path: str, T: int, theta: Dict[str, float], const: Dict[str, float], random_state=None) -> Tuple[
+    np.ndarray, np.ndarray]:
     if os.path.exists(path):
         with open(path, mode='rb') as f:
             return pickle.load(f)
     else:
         random_state = check_random_state(random_state)
-        x = np.empty(shape=T, dtype=float)
-        y = np.empty(shape=T, dtype=float)
-        x_0 = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_x1))
+
+        x_0 = np.array([8, 8, 8, 5])
+        x = [x_0]
+        y = []
 
         x_prev = x_0
+        t = 0.0
 
-        for n in range(T):
-            v = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_v))
-            x[n] = x_prev / 2 + 25 * (x_prev / (1 + np.power(x_prev, 2))) + 8 * np.cos(1.2 * (n + 1)) + v
-            x_prev = x[n]
+        # rna = state[0]
+        # p = state[1]
+        # p2 = state[2]
+        # dna = state[3]
 
-            w = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_w))
-            y[n] = np.power(x[n], 2) / 20 + w
+        while t < T:
+            h = hazard_function(x_prev, theta, const)
+            h_sum = np.sum(h)
+            p = h / h_sum
+
+            reaction_type = random_state.choice(a=p.shape[0], p=p)
+            dt = -np.log(random_state.rand()) / h_sum
+            x_next = x_prev.copy()
+
+            if reaction_type + 1 == 1:
+                x_next[3] = const['k']
+            elif reaction_type + 1 == 2:
+                x_next[2] += 1
+                x_next[3] += 1
+            elif reaction_type + 1 == 3:
+                x_next[0] += 1
+                x_next[3] += 1
+            elif reaction_type + 1 == 4:
+                x_next[0] += 1
+                x_next[1] += 1
+            elif reaction_type + 1 == 5:
+                x_next[2] += 1
+            elif reaction_type + 1 == 6:
+                x_next[1] += 2
+            elif reaction_type + 1 == 7:
+                pass  # Nothing.
+            elif reaction_type + 1 == 8:
+                pass  # Nothing.
+            elif reaction_type + 1 == 9:
+                pass
+            else:
+                raise ValueError('This should never happen!')
+
+            t += dt
+
+            # Update the state.
+            x.append(x_next)
+            x_prev = x_next
+
+            # Generate observation.
+            y_next = x_next[1] + 2 * x_next[2] + stats.norm.rvs(loc=0.0, scale=const['observation_std'],
+                                                                random_state=random_state)
+            y.append(y_next)
+
+        x = np.array(x)
+        y = np.array(y)
 
         with open(path, mode='wb') as f:
             pickle.dump((x, y[np.newaxis, :]), f)
 
-        return np.append(x_0, x), y[np.newaxis, :]
+        return x, y[np.newaxis, :]
 
 
 def main():
@@ -247,7 +271,17 @@ def main():
                                      theta_init=theta_init,
                                      random_state=1)
 
-    x, y = simulate_xy(os.path.join(auto_regulation_path, 'simulated_data.pickle'), T=100, random_state=1)
+    true_theta = {
+        'lc1': np.log(0.1),
+        'lc2': np.log(0.7),
+        'lc3': np.log(0.35),
+        'lc4': np.log(0.2),
+        'lc7': np.log(0.3),
+        'lc8': np.log(0.1)
+    }
+
+    x, y = simulate_xy(os.path.join(auto_regulation_path, 'simulated_data.pickle'), T=100, theta=true_theta,
+                       const=const, random_state=1)
     sampled_theta_path = os.path.join(auto_regulation_path, 'sampled_theta.pickle')
 
     if os.path.exists(sampled_theta_path):
@@ -280,15 +314,6 @@ def main():
         'lc8': r'$c_1$'
     }
 
-    true_values = {
-        'lc1': np.log(0.1),
-        'lc2': np.log(0.7),
-        'lc3': np.log(0.35),
-        'lc4': np.log(0.2),
-        'lc7': np.log(0.3),
-        'lc8': np.log(0.1)
-    }
-
     # # Histogram detail.
     # import matplotlib.pyplot as plt
     # fig = plt.figure()
@@ -319,15 +344,15 @@ def main():
     #
     #     title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values[burn_in::step]))
     #
-    #     if true_values is not None and param_name in true_values:
-    #         plt.axvline(true_values[param_name], color='red', lw=2)
-    #         title += ', true value: {:.03f}'.format(true_values[param_name])
+    #     if true_theta is not None and param_name in true_theta:
+    #         plt.axvline(true_theta[param_name], color='red', lw=2)
+    #         title += ', true value: {:.03f}'.format(true_theta[param_name])
     #
     #         plt.suptitle(title)
     #
     #     plt.show()
 
-    plot_parameters(thetas=theta, transforms=transforms, pretty_names=pretty_names, true_values=true_values,
+    plot_parameters(thetas=theta, transforms=transforms, pretty_names=pretty_names, true_values=true_theta,
                     priors=prior, kernel_scales=mcmc.kernel[0].scale_log if isinstance(mcmc, ABCMH) else None, bins=200,
                     max_lags=100)
 
