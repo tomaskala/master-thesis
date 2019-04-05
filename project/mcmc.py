@@ -196,6 +196,10 @@ class MH(abc.ABC):
 
         loglik_hat_new = self._log_likelihood_estimate(y, theta_new)
 
+        # print('loglik new', loglik_hat_new)
+        # print('theta new', theta_new)
+        # print()
+
         log_ratio += loglik_hat_new
         log_ratio -= loglik_hat_old
 
@@ -361,6 +365,30 @@ class ABCMH(MH, abc.ABC):
 
         return super(ABCMH, self).do_inference(y=y)
 
+    def _log_likelihood_estimate1(self, y: np.ndarray, theta: Dict[str, float]) -> float:
+        T = y.shape[0]
+        x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
+        assert len(x.shape) == 2 and x.shape[1] == self.n_particles
+        ll = 0.0
+
+        for t in range(T):
+            x = self._transition(x, t + 1, theta)
+            u = self._measurement_model(x, theta)
+            u_alpha = self._alphath_closest(u=u, y=y[t])
+            self._tune_kernel_scales(y=y[t], u=u_alpha)
+            lw = self._log_kernel(u, y[t])
+            w = np.exp(lw)
+
+            if np.max(w) < 1e-20:
+                raise ValueError('Underflow')
+
+            ll += logsumexp(lw) - np.log(self.n_particles)
+            indices = self.random_state.choice(self.n_particles, self.n_particles, replace=True, p=w/np.sum(w))
+            x = x[:, indices]
+
+        print(ll)
+        return ll
+
     def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
         T = y.shape[0]
         x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
@@ -395,10 +423,11 @@ class ABCMH(MH, abc.ABC):
         out = np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
 
         # Underflow check.
-        if out < -20:
-            return -1500
-        else:
-            return out
+        # if out < -20:
+        #     return -1500
+        # else:
+        #     return out
+        return out
 
     def _alphath_closest(self, u: np.ndarray, y: np.ndarray) -> np.ndarray:
         distances_squared = np.power(y[:, np.newaxis] - u, 2)
