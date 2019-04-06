@@ -107,9 +107,6 @@ def main():
         with open(sampled_theta_path, 'rb') as f:
             theta = pickle.load(f)
     else:
-        # print(y)
-        # print(y.shape)
-        # exit()
         theta = mcmc.do_inference(y)
 
         with open(sampled_theta_path, 'wb') as f:
