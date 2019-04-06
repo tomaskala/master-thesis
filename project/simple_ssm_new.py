@@ -43,10 +43,13 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
             w = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_w))
             y[n] = x[n] + w
 
-        with open(path, mode='wb') as f:
-            pickle.dump((np.append(x_0, x), y), f)
+        x = np.append(x_0, x)
+        y = y[:, np.newaxis]
 
-        return np.append(x_0, x), y
+        with open(path, mode='wb') as f:
+            pickle.dump((x, y), f)
+
+        return x, y
 
 
 def main():
