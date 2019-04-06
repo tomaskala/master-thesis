@@ -1,6 +1,5 @@
 import os
 import pickle
-from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,10 +13,10 @@ from utils import check_random_state
 
 
 class ParticleLotkaVolterra(MetropolisHastingsPF):
-    def _transition(self, x: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
+    def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
         return step_LVc(x, self.const['times'][t - 1], self.const['times'][t] - self.const['times'][t - 1], theta)
 
-    def _observation_log_prob(self, y: np.ndarray, x: np.ndarray, theta: Dict[str, float]) -> np.ndarray:
+    def _observation_log_prob(self, y: np.ndarray, x: np.ndarray, theta: np.ndarray) -> np.ndarray:
         log_prob = np.sum(stats.norm.logpdf(y, x, self.const['observation_std']), axis=1)
         assert log_prob.ndim == 1 and log_prob.shape[0] == self.n_particles
         return log_prob
@@ -54,12 +53,11 @@ def main():
         'times': np.concatenate(([0.0], t))
     }
 
-    # prior = Prior([
-    #     stats.uniform(-50, 100),
-    #     stats.uniform(-50, 100),
-    #     stats.uniform(-50, 100)
-    # ])
-    prior = None
+    prior = Prior([
+        stats.uniform(-50, 100),
+        stats.uniform(-50, 100),
+        stats.uniform(-50, 100)
+    ])
 
     proposal = Proposal([
         Distribution(stats.norm, scale=0.01),

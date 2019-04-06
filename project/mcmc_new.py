@@ -1,5 +1,5 @@
 import abc
-from typing import Dict, List
+from typing import List
 
 import numpy as np
 from scipy.stats import rv_continuous
@@ -111,11 +111,11 @@ class MetropolisHastings(abc.ABC):
             theta_prop = self.proposal.sample(theta)
             log_ratio = 0.0
 
-            # log_ratio += self.prior.log_prob(theta_prop)
-            # log_ratio -= self.prior.log_prob(theta)
+            log_ratio += self.prior.log_prob(theta_prop)
+            log_ratio -= self.prior.log_prob(theta)
 
-            # log_ratio += self.proposal.log_prob(theta, theta_prop)
-            # log_ratio -= self.proposal.log_prob(theta_prop, theta)
+            log_ratio += self.proposal.log_prob(theta, theta_prop)
+            log_ratio -= self.proposal.log_prob(theta_prop, theta)
 
             loglik_prop = self._log_likelihood_estimate(y, theta_prop)
             log_ratio += loglik_prop
@@ -188,9 +188,9 @@ class MetropolisHastingsPF(MetropolisHastings, abc.ABC):
         return loglik
 
     @abc.abstractmethod
-    def _transition(self, x: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
+    def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
         pass
 
     @abc.abstractmethod
-    def _observation_log_prob(self, y: np.ndarray, x: np.ndarray, theta: Dict[str, float]) -> np.ndarray:
+    def _observation_log_prob(self, y: np.ndarray, x: np.ndarray, theta: np.ndarray) -> np.ndarray:
         pass
