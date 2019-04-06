@@ -102,6 +102,7 @@ class MetropolisHastings(abc.ABC):
         :param y: array, shaped (T, y-dim)
         :return: array, shaped (n_samples, theta-dim)
         """
+        # TODO: Assert y.shape!
         theta = self.prior.sample() if self.theta_init is None else self.theta_init
         thetas = np.zeros(shape=(self.n_samples, theta.shape[0]), dtype=float)
         loglik = -1e99
