@@ -4,19 +4,19 @@ from libc.math cimport exp, log
 from libc.stdlib cimport rand, RAND_MAX
 
 
-def step_lv(long[:,:] x, double t0, double deltat, double[:] th):
+cpdef step_lv(long[:,:] x, double t0, double deltat, double[:] th):
     cdef int i
 
     x = x.copy()
     x_new = np.zeros(shape=(x.shape[0], x.shape[1]), dtype=np.long)
 
     for i in range(x.shape[0]):
-        x_new[i] = one_step(x[i], t0, deltat, th)
+        x_new[i] = simulate_state(x[i], t0, deltat, th)
 
     return x_new
 
 
-cdef one_step(long[:] x, double t0, double deltat, double[:] th):
+cdef simulate_state(long[:] x, double t0, double deltat, double[:] th):
     cdef double t = t0
     cdef double dt = deltat
     cdef double termt = t + dt
