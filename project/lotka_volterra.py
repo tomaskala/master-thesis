@@ -40,7 +40,7 @@ def main():
     if not os.path.exists(path):
         os.makedirs(path)
 
-    t, y = load_data('./LV_data.pickle')
+    t, y = load_data('./data/LV_data.pickle')
     n_samples = 10000
     n_particles = 100
     thinning = 10
