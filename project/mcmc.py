@@ -1,4 +1,5 @@
 import abc
+import warnings
 from typing import List
 
 import numpy as np
@@ -182,7 +183,7 @@ class MetropolisHastingsPF(MetropolisHastings, abc.ABC):
             w = np.exp(lw)
 
             if np.max(w) < 1e-20:
-                print('Warning: Particle filter bombed.')  # TODO: warnings.warn
+                warnings.warn('Weight underflow.', RuntimeWarning)
                 return -1e99
 
             loglik += np.log(np.mean(w))
@@ -333,7 +334,7 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
             w = np.exp(lw)
 
             if np.max(w) < 1e-20:
-                print('Warning: Particle filter bombed.')  # TODO: warnings.warn
+                warnings.warn('Weight underflow.', RuntimeWarning)
                 return -1e99
 
             loglik += np.log(np.mean(w))
