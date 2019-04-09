@@ -4,14 +4,15 @@ from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pyximport;
+import pyximport
 
 pyximport.install(setup_args={'include_dirs': np.get_include()})
+
 from scipy import stats
 from statsmodels.graphics.tsaplots import plot_acf
 
 from auto_regulation_routines import step_ar
-from mcmc_new import Distribution, MetropolisHastingsPF, Prior, Proposal
+from mcmc import Distribution, MetropolisHastingsPF, Prior, Proposal
 from utils import check_random_state
 
 

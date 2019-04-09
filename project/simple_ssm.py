@@ -6,7 +6,7 @@ import numpy as np
 from scipy import stats
 from statsmodels.graphics.tsaplots import plot_acf
 
-from mcmc_new import Distribution, MetropolisHastingsPF, Prior, Proposal
+from mcmc import Distribution, MetropolisHastingsPF, Prior, Proposal
 from utils import check_random_state
 
 

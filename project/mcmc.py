@@ -98,12 +98,15 @@ class MetropolisHastings(abc.ABC):
 
     def do_inference(self, y):
         """
-
-        :param y: array, shaped (T, y-dim)
-        :return: array, shaped (n_samples, theta-dim)
+        Infer the static parameters `theta` of the model from a sequence of 2-dimensional observations `y`.
+        :param y: observation sequence: array, shaped (T, y-dim), T denotes the time
+        :return: sampled parameters: array, shaped (n_samples, theta-dim)
         """
-        assert y.ndim == 2
         theta = self.prior.sample() if self.theta_init is None else self.theta_init
+
+        assert theta.ndim == 1
+        assert y.ndim == 2
+
         thetas = np.zeros(shape=(self.n_samples, theta.shape[0]), dtype=float)
         loglik = -1e99
         accepted = 0

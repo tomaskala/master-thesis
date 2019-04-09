@@ -3,18 +3,21 @@ import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pyximport; pyximport.install(setup_args={'include_dirs': np.get_include()})
+import pyximport;
+
+pyximport.install(setup_args={'include_dirs': np.get_include()})
+
 from scipy import stats
 from statsmodels.graphics.tsaplots import plot_acf
 
-from lotka_volterra_routines import step_LVc
-from mcmc_new import Distribution, MetropolisHastingsPF, Prior, Proposal
+from lotka_volterra_routines import step_lv
+from mcmc import Distribution, MetropolisHastingsPF, Prior, Proposal
 from utils import check_random_state
 
 
 class ParticleLotkaVolterra(MetropolisHastingsPF):
     def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
-        return step_LVc(x, self.const['times'][t - 1], self.const['times'][t] - self.const['times'][t - 1], theta)
+        return step_lv(x, self.const['times'][t - 1], self.const['times'][t] - self.const['times'][t - 1], theta)
 
     def _observation_log_prob(self, y: np.ndarray, x: np.ndarray, theta: np.ndarray) -> np.ndarray:
         log_prob = np.sum(stats.norm.logpdf(y, x, self.const['observation_std']), axis=1)
@@ -29,7 +32,6 @@ def load_data(path):
     return t, y
 
 
-# TODO: Maybe prepend one pseudo-observation y to compensate x_0 not producing any y?
 def main():
     algorithm = 'pmh'
     path = './lotka_volterra_{}'.format(algorithm)
@@ -96,7 +98,7 @@ def main():
     theta = np.exp(theta)
     theta = theta[::thinning]
     truth = np.array([1, 0.005, 0.6])
-    pretty_names = [r'$c_1$', r'$c_2$', r'$c_3']
+    pretty_names = [r'$c_1$', r'$c_2$', r'$c_3$']
 
     for i in range(theta.shape[1]):
         param_name = pretty_names[i]
