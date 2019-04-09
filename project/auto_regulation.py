@@ -1,47 +1,40 @@
-"""
-Bayesian Parameter Inference for Stochastic Biochemical Network Models Using Particle Markov Chain Monte Carlo,
-source: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3262293/pdf/rsfs20110047.pdf
-"""
-
-from joblib import Parallel, delayed
 import os
 import pickle
 from typing import Dict, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
-import pyximport
+import pyximport;
+
 pyximport.install(setup_args={'include_dirs': np.get_include()})
 from scipy import stats
+from statsmodels.graphics.tsaplots import plot_acf
 
-from auto_regulation_routines import transition
-from mcmc import ABCMH, PMH, ProposalDistribution
-from utils import check_random_state, plot_parameters
-
-
-def batch_diag(array: np.ndarray) -> np.ndarray:
-    """
-    Apply the `diag` operation on each row of the 2D input array, producing a 3D array with the individual
-    diagonal matrices stored along the first dimension.
-    :param array: array shaped (M, N)
-    :return: array shaped (N, M, M)
-    """
-    rows, cols = array.shape
-    out = np.zeros((cols, rows, rows), dtype=array.dtype)
-    diag = np.arange(rows)
-    out[:, diag, diag] = array.T
-
-    return out
+from auto_regulation_routines import step_ar
+from mcmc_new import Distribution, MetropolisHastingsPF, Prior, Proposal
+from utils import check_random_state
 
 
-def hazard_function(state: np.ndarray, theta: Dict[str, float], const: Dict[str, float]):
-    c1 = np.exp(theta['lc1'])
-    c2 = np.exp(theta['lc2'])
-    c3 = np.exp(theta['lc3'])
-    c4 = np.exp(theta['lc4'])
+class ParticleAutoRegulation(MetropolisHastingsPF):
+    def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
+        return step_ar(x, self.const['times'][t - 1], self.const['times'][t] - self.const['times'][t - 1], theta,
+                       self.const['k'], self.const['c5'], self.const['c6'])
+
+    def _observation_log_prob(self, y: np.ndarray, x: np.ndarray, theta: np.ndarray) -> np.ndarray:
+        log_prob = stats.norm.logpdf(y, x[:, 1] + 2 * x[:, 2], self.const['observation_std'])
+        assert log_prob.ndim == 1 and log_prob.shape[0] == self.n_particles
+        return log_prob
+
+
+def hazard_function(state: np.ndarray, theta: np.ndarray, const: Dict[str, float]):
+    c1 = np.exp(theta[0])
+    c2 = np.exp(theta[1])
+    c3 = np.exp(theta[2])
+    c4 = np.exp(theta[3])
     c5 = const['c5']
     c6 = const['c6']
-    c7 = np.exp(theta['lc7'])
-    c8 = np.exp(theta['lc8'])
+    c7 = np.exp(theta[4])
+    c8 = np.exp(theta[5])
 
     rna = state[0]
     p = state[1]
@@ -60,32 +53,13 @@ def hazard_function(state: np.ndarray, theta: Dict[str, float], const: Dict[str,
     ])
 
 
-class ABCMHAutoRegulation(ABCMH):
-    def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
-        return transition(state=state, t=t, theta=theta, n_particles=self.n_particles, consts=self.const)
-
-    def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> np.array:
-        return np.array([state[1] + 2 * state[2]])
-
-
-class PMHAutoRegulation(PMH):
-    def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
-        return transition(state=state, t=t, theta=theta, n_particles=self.n_particles, consts=self.const)
-
-    def _observation_log_prob(self, y: np.ndarray, state: np.ndarray, theta: Dict[str, float]) -> float:
-        loc = state[1] + 2 * state[2]
-        return stats.norm.logpdf(x=y[0], loc=loc, scale=self.const['observation_std'])
-
-
 # Gillespie algorithm.
-def simulate_xy(path: str, T: int, theta: Dict[str, float], const: Dict[str, float], random_state=None) -> Tuple[
+def simulate_xy(path: str, T: int, theta: np.ndarray, const: Dict[str, float], random_state=None) -> Tuple[
     np.ndarray, np.ndarray, np.ndarray]:
     if os.path.exists(path):
         with open(path, mode='rb') as f:
             return pickle.load(f)
     else:
-        random_state = check_random_state(random_state)
-
         x_0 = np.array([8, 8, 8, 5])
         x = [x_0]
         y = []
@@ -97,9 +71,7 @@ def simulate_xy(path: str, T: int, theta: Dict[str, float], const: Dict[str, flo
         while t < T:
             h = hazard_function(x_prev, theta, const)
             h_sum = np.sum(h)
-            p = h / h_sum
-
-            reaction_type = random_state.choice(a=p.shape[0], p=p)
+            reaction_type = random_state.choice(h.shape[0], p=h / h_sum)
             dt = -np.log(random_state.rand()) / h_sum
 
             x_next = x_prev + const['S'][:, reaction_type]
@@ -117,23 +89,29 @@ def simulate_xy(path: str, T: int, theta: Dict[str, float], const: Dict[str, flo
 
         x = np.array(x)
         y = np.array(y)
+        y = y[:, np.newaxis]
         time = np.array(time)
         assert x.shape[0] == time.shape[0] == y.shape[0] + 1
 
         with open(path, mode='wb') as f:
-            pickle.dump((time, x, y[np.newaxis, :]), f)
+            pickle.dump((time, x, y), f)
 
-        return time, x, y[np.newaxis, :]
+        return time, x, y
 
 
 def main():
-    # Either 'abcmh' or 'pmh'.
-    algorithm = 'abcmh'
+    algorithm = 'pmh'
+    path = './auto_regulation_{}'.format(algorithm)
+    random_state = check_random_state(1)
 
-    auto_regulation_path = './auto_regulation_{}'.format(algorithm)
+    if not os.path.exists(path):
+        os.makedirs(path)
 
-    if not os.path.exists(auto_regulation_path):
-        os.makedirs(auto_regulation_path)
+    n_samples = 2000
+    n_particles = 100
+    thinning = 10
+
+    state_init = np.array([8, 8, 8, 5])
 
     const = {
         'k': 10,
@@ -149,145 +127,80 @@ def main():
         ])
     }
 
-    # log(c_i) ~ U(-7,2), but in SciPy, the uniform distribution is parameterized as U(loc,loc+scale).
-    prior = {  # TODO: Use gamma priors.
-        'lc1': stats.uniform(loc=-7.0, scale=9.0),
-        'lc2': stats.uniform(loc=-7.0, scale=9.0),
-        'lc3': stats.uniform(loc=-7.0, scale=9.0),
-        'lc4': stats.uniform(loc=-7.0, scale=9.0),
-        'lc7': stats.uniform(loc=-7.0, scale=9.0),
-        'lc8': stats.uniform(loc=-7.0, scale=9.0)
-    }
+    prior = Prior([
+        # U(-7,2) as in the paper. However, in SciPy, the distribution is given as U(loc,loc+scale).
+        stats.uniform(-7, 9),
+        stats.uniform(-7, 9),
+        stats.uniform(-7, 9),
+        stats.uniform(-7, 9),
+        stats.uniform(-7, 9),
+        stats.uniform(-7, 9)
+    ])
 
-    proposal = {
-        'lc1': ProposalDistribution(distribution_f=stats.norm, scale=0.8, is_symmetric=True),
-        'lc2': ProposalDistribution(distribution_f=stats.norm, scale=0.8, is_symmetric=True),
-        'lc3': ProposalDistribution(distribution_f=stats.norm, scale=0.8, is_symmetric=True),
-        'lc4': ProposalDistribution(distribution_f=stats.norm, scale=0.8, is_symmetric=True),
-        'lc7': ProposalDistribution(distribution_f=stats.norm, scale=0.8, is_symmetric=True),
-        'lc8': ProposalDistribution(distribution_f=stats.norm, scale=0.8, is_symmetric=True)
+    proposal = Proposal([
+        Distribution(stats.norm, scale=0.8),
+        Distribution(stats.norm, scale=0.8),
+        Distribution(stats.norm, scale=0.8),
+        Distribution(stats.norm, scale=0.8),
+        Distribution(stats.norm, scale=0.8),
+        Distribution(stats.norm, scale=0.8)
+    ])
 
-    }
+    theta_init = np.log(np.array([0.1, 0.7, 0.35, 0.2, 0.3, 0.1]))
 
-    theta_init = None
-    state_init = np.array([8, 8, 8, 5])
+    t, x, y = simulate_xy(os.path.join(path, 'simulated_data.pickle'), T=10, theta=theta_init,
+                          const=const, random_state=random_state)
+    const['times'] = t
 
-    sampler_path = os.path.join(auto_regulation_path, 'sampler.pickle')
-
-    if os.path.exists(sampler_path):
-        with open(sampler_path, mode='rb') as f:
-            mcmc = pickle.load(f)
+    if algorithm == 'abcmh':
+        raise NotImplementedError()
     else:
-        if algorithm == 'abcmh':
-            mcmc = ABCMHAutoRegulation(n_samples=2000,
-                                       n_particles=100,
-                                       alpha=0.9,
-                                       hpr_p=0.95,
-                                       state_init=state_init,
-                                       const=const,
-                                       prior=prior,
-                                       proposal=proposal,
-                                       kernel='gaussian',
-                                       noisy_abc=False,
-                                       theta_init=theta_init,
-                                       random_state=1,
-                                       tune=False)
-        else:
-            mcmc = PMHAutoRegulation(n_samples=2000,
-                                     n_particles=100,
-                                     state_init=state_init,
-                                     const=const,
-                                     prior=prior,
-                                     proposal=proposal,
-                                     theta_init=theta_init,
-                                     random_state=1)
+        mcmc = ParticleAutoRegulation(
+            n_samples=n_samples,
+            n_particles=n_particles,
+            state_init=state_init,
+            const=const,
+            prior=prior,
+            proposal=proposal,
+            tune=False,
+            theta_init=theta_init,
+            random_state=random_state
+        )
 
-    true_theta = {
-        'lc1': np.log(0.1),
-        'lc2': np.log(0.7),
-        'lc3': np.log(0.35),
-        'lc4': np.log(0.2),
-        'lc7': np.log(0.3),
-        'lc8': np.log(0.1)
-    }
-
-    t, x, y = simulate_xy(os.path.join(auto_regulation_path, 'simulated_data.pickle'), T=10, theta=true_theta,
-                       const=const, random_state=1)
-
-    sampled_theta_path = os.path.join(auto_regulation_path, 'sampled_theta.pickle')
-    const['t'] = t
+    sampled_theta_path = os.path.join(path, 'sampled_theta.pickle')
 
     if os.path.exists(sampled_theta_path):
-        with open(sampled_theta_path, mode='rb') as f:
+        with open(sampled_theta_path, 'rb') as f:
             theta = pickle.load(f)
     else:
         theta = mcmc.do_inference(y)
 
-        with open(sampler_path, mode='wb') as f:
-            pickle.dump(mcmc, f)
-
-        with open(sampled_theta_path, mode='wb') as f:
+        with open(sampled_theta_path, 'wb') as f:
             pickle.dump(theta, f)
 
-    transforms = {
-        'lc1': np.exp,
-        'lc2': np.exp,
-        'lc3': np.exp,
-        'lc4': np.exp,
-        'lc7': np.exp,
-        'lc8': np.exp
-    }
+    theta = np.exp(theta)
+    theta = theta[::thinning]
+    truth = np.exp(theta_init)
+    pretty_names = [r'$c_1$', r'$c_2$', r'$c_3', r'$c_4$', r'$c_7$', r'$c_8']
 
-    pretty_names = {
-        'lc1': r'$c_1$',
-        'lc2': r'$c_1$',
-        'lc3': r'$c_1$',
-        'lc4': r'$c_1$',
-        'lc7': r'$c_1$',
-        'lc8': r'$c_1$'
-    }
+    for i in range(theta.shape[1]):
+        param_name = pretty_names[i]
+        param_values = theta[:, i]
 
-    # # Histogram detail.
-    # import matplotlib.pyplot as plt
-    # fig = plt.figure()
-    # plt.title('Histogram')
-    #
-    # burn_in = 0
-    # step = 1
-    # bins = 100
-    # plt.ylim((0.0, 0.00175))
-    #
-    # params2samples = {param_name: [] for param_name in theta[0].keys()}
-    #
-    # for thetaa in theta:
-    #     for param_name, param_value in thetaa.items():
-    #         params2samples[param_name].append(param_value)
-    #
-    # for param_name, param_values in params2samples.items():
-    #
-    #     plt.hist(param_values[burn_in::step], density=True, bins=bins)
-    #
-    #     x = np.linspace(np.min(param_values[burn_in::step]), np.max(param_values[burn_in::step]), 100)
-    #     plt.plot(x, prior[param_name].pdf(x), color='green')
-    #
-    #     if pretty_names is not None and param_name in pretty_names:
-    #         pretty_name = pretty_names[param_name]
-    #     else:
-    #         pretty_name = param_name
-    #
-    #     title = '{}, mean: {:.03f}'.format(pretty_name, np.mean(param_values[burn_in::step]))
-    #
-    #     if true_theta is not None and param_name in true_theta:
-    #         plt.axvline(true_theta[param_name], color='red', lw=2)
-    #         title += ', true value: {:.03f}'.format(true_theta[param_name])
-    #
-    #         plt.suptitle(title)
-    #
-    #     plt.show()
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        plt.suptitle(param_name)
 
-    plot_parameters(thetas=theta, transforms=transforms, pretty_names=pretty_names, true_values=true_theta,
-                    priors=prior, kernel_scales=mcmc.kernel[0].scale_log if isinstance(mcmc, ABCMH) else None, bins=200,
-                    max_lags=100)
+        ax1.set_title('Trace plot')
+        ax1.plot(param_values)
+        ax1.axhline(truth[i], color='red', lw=2)
+
+        plot_acf(param_values, ax=ax2)
+
+        ax3.set_title('Histogram')
+        ax3.hist(param_values, density=True, bins=30)
+        ax3.axvline(truth[i], color='red', lw=2)
+
+        plt.show()
 
 
 if __name__ == '__main__':

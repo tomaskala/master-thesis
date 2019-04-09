@@ -1,119 +1,92 @@
 import abc
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import List
 
 import numpy as np
-from scipy.special import logsumexp
-from scipy.stats import cauchy, norm, rv_continuous
+from scipy.stats import rv_continuous
 
 from utils import check_random_state
 
 
-# TODO: Multivariate measurements => each coordinate can have its own kernel function.
-# TODO: If we assume independence, we can just multiply kernels === sum log-kernels.
-class Kernel(abc.ABC):
-    """
-    Base class for all kernel functions -- symmetric distributions in the location-scale family.
-    The kernels support two operations:
-    1. log_kernel
-       Given an array of N pseudo-measurements (N being the number of particles) and a single true
-       measurement y, calculate an array of N log-probabilities of each pseudo-measurement with the
-       kernel centered at y.
-    2. tune_scale
-       Given the alpha-th closest pseudo-measurement u to the true measurement y, and the high probability
-       region (HPR) probability p, calculate the kernel scale so that it covers alpha/N with a p-HPR, once
-       centered at y.
-    """
+def update_truncnorm(loc, params):
+    params['a'] = (params['a'] - loc) / params['scale']
+    params['b'] = (params['b'] - loc) / params['scale']
 
-    def __init__(self):
-        self.scale = 1.0
-        self.scale_log = [self.scale]
-
-    @abc.abstractmethod
-    def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
-        pass
-
-    def tune_scale(self, y: float, u: float, p: float):
-        self._tune_scale(y=y, u=u, p=p)
-        self.scale_log.append(self.scale)
-
-    @abc.abstractmethod
-    def _tune_scale(self, y: float, u: float, p: float):
-        pass
-
-    @abc.abstractmethod
-    def sample(self, size: Optional[int] = None, random_state=None) -> Union[float, np.ndarray]:
-        pass
+    return params
 
 
-class GaussianKernel(Kernel):
-    def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
-        return -np.power(u - center, 2.0) / (2.0 * (self.scale ** 2.0))
+class Distribution:
+    def __init__(self, dist, truncnorm=False, **kwargs):
+        assert 'loc' not in kwargs, 'the location parameter is to be given explicitly on each distribution invocation'
 
-    def _tune_scale(self, y: float, u: float, p: float):
-        self.scale = np.abs(u - y) / norm.ppf(q=((p + 1) / 2))
-
-    def sample(self, size: Optional[int] = None, random_state=None) -> Union[float, np.ndarray]:
-        return norm.rvs(loc=0.0, scale=self.scale, size=size, random_state=random_state)
-
-
-class CauchyKernel(Kernel):
-    def log_kernel(self, u: np.ndarray, center: float) -> np.ndarray:
-        return -np.log1p(np.power(u - center, 2.0) / (self.scale ** 2.0))
-
-    def _tune_scale(self, y: float, u: float, p: float):
-        self.scale = np.abs(u - y) / cauchy.ppf(q=((p + 1) / 2))
-
-    def sample(self, size: Optional[int] = None, random_state=None) -> Union[float, np.ndarray]:
-        return cauchy.rvs(loc=0.0, scale=self.scale, size=size, random_state=random_state)
-
-
-class ProposalDistribution:
-    """
-    Proposal kernel for the Metropolis-Hastings algorithm.
-    :param distribution_f: scipy distribution representing the kernel
-    :param param_update: optional function mapping the current center and current parameter values to new
-           parameter values; called before each sampling and log-probability evaluation (useful to modify
-           the truncated Gaussian parameters, since scipy cannot be bothered to do that automatically)
-    :param is_symmetric: optional indicator specifying that this kernel is symmetric, and it is not necessary
-           to evaluate it when computing the acceptance ratio
-    :param kwargs: additional arguments passed to the underlying distribution
-    """
-
-    def __init__(self,
-                 distribution_f,
-                 param_update: Optional[Callable[[float, Dict[str, Any]], Dict[str, Any]]] = None,
-                 is_symmetric: bool = False,
-                 **kwargs):
-        self.distribution_f = distribution_f
-        self.param_update = param_update
-        self.is_symmetric = is_symmetric
+        self.dist = dist
+        self.truncnorm = truncnorm
         self.kwargs = kwargs
 
-    def sample(self, center: float, size: Optional[int] = None, random_state=None):
-        if self.param_update is not None:
-            params = self.param_update(center, self.kwargs.copy())
+        if truncnorm:
+            if 'scale' not in kwargs or 'a' not in kwargs or 'b' not in kwargs:
+                raise ValueError('Truncnorm not parameterized correctly.')
+
+    def log_prob(self, x, loc):
+        if self.truncnorm:
+            params = update_truncnorm(loc, self.kwargs)
         else:
             params = self.kwargs
 
-        return self.distribution_f.rvs(loc=center, size=size, random_state=random_state, **params)
+        return self.dist.logpdf(x=x, loc=loc, **params)
 
-    def log_prob(self, x: float, center: float):
-        if self.param_update is not None:
-            params = self.param_update(center, self.kwargs.copy())
+    def sample(self, loc, random_state=None):
+        if self.truncnorm:
+            params = update_truncnorm(loc, self.kwargs)
         else:
             params = self.kwargs
 
-        return self.distribution_f.logpdf(x=x, loc=center, **params)
+        return self.dist.rvs(loc=loc, random_state=random_state, **params)
 
 
-class MH(abc.ABC):
+class Prior:
+    def __init__(self, distributions: List[rv_continuous]):
+        self.distributions = distributions
+
+    def log_prob(self, theta):
+        assert len(self.distributions) == len(theta)
+        log_prob = 0.0
+
+        for th, dist in zip(theta, self.distributions):
+            log_prob += dist.logpdf(th)
+
+        return log_prob
+
+    def sample(self, random_state=None):
+        return np.array([dist.rvs(random_state=random_state) for dist in self.distributions], dtype=float)
+
+
+class Proposal:
+    def __init__(self, distributions: List[Distribution]):
+        self.distributions = distributions
+
+    def log_prob(self, theta, loc):
+        assert len(self.distributions) == len(theta) == len(loc)
+        log_prob = 0.0
+
+        for th, l, dist in zip(theta, loc, self.distributions):
+            log_prob += dist.log_prob(th, l)
+
+        return log_prob
+
+    def sample(self, loc, random_state=None):
+        assert len(self.distributions) == len(loc)
+        return np.array([dist.sample(l, random_state=random_state) for l, dist in zip(loc, self.distributions)],
+                        dtype=float)
+
+
+class MetropolisHastings(abc.ABC):
     def __init__(self,
-                 n_samples: int,
-                 prior: Dict[str, rv_continuous],
-                 proposal: Dict[str, ProposalDistribution],
-                 tune: bool = True,
-                 tune_interval: int = 100,
-                 theta_init: Optional[Dict[str, float]] = None,
+                 n_samples,
+                 prior,
+                 proposal,
+                 tune=True,
+                 tune_interval=100,
+                 theta_init=None,
                  random_state=None):
         self.n_samples = n_samples
         self.prior = prior
@@ -123,336 +96,102 @@ class MH(abc.ABC):
         self.theta_init = theta_init
         self.random_state = check_random_state(random_state)
 
-        self._scaling = 1.0
-        self._steps_until_tune = tune_interval
-        self._accepted = 0
+    def do_inference(self, y):
+        """
 
-    def do_inference(self, y: np.ndarray) -> List[Dict[str, float]]:
-        assert y.ndim == 2, 'the dimensionality of `y` must be y-dim x time series length'
-
-        # Transpose the observations to be shaped (time series length x y-dim) for faster indexing.
-        # The input is accepted in the transposed way, as it is more straightforward to generate the data in that
-        # way, and it is also more natural.
-        y = y.T.copy()
-
-        theta_init = self._mh_init()
-        loglik_hat = self._log_likelihood_estimate(y, theta_init)
-
-        thetas = [theta_init]
-        loglik_hats = [loglik_hat]
-        total_accepted = 0
+        :param y: array, shaped (T, y-dim)
+        :return: array, shaped (n_samples, theta-dim)
+        """
+        assert y.ndim == 2
+        theta = self.prior.sample() if self.theta_init is None else self.theta_init
+        thetas = np.zeros(shape=(self.n_samples, theta.shape[0]), dtype=float)
+        loglik = -1e99
+        accepted = 0
 
         for i in range(self.n_samples):
-            theta, loglik_hat, accepted = self._mh_step(y, thetas[i], loglik_hats[i])
-            thetas.append(theta)
-            loglik_hats.append(loglik_hat)
-            total_accepted += int(accepted)
+            theta_prop = self.proposal.sample(theta)
+            log_ratio = 0.0
+
+            log_ratio += self.prior.log_prob(theta_prop)
+            log_ratio -= self.prior.log_prob(theta)
+
+            log_ratio += self.proposal.log_prob(theta, theta_prop)
+            log_ratio -= self.proposal.log_prob(theta_prop, theta)
+
+            loglik_prop = self._log_likelihood_estimate(y, theta_prop)
+            log_ratio += loglik_prop
+            log_ratio -= loglik
+
+            if np.log(self.random_state.rand()) < log_ratio:
+                theta = theta_prop
+                loglik = loglik_prop
+                accepted += 1
+
+            thetas[i] = theta
 
             print('Done sample {} of {} ({:.02f}%).'.format(i + 1, self.n_samples, (i + 1) / self.n_samples * 100.0))
-            print('Accepted: {} of {} ({:.02f}%) samples so far.'.format(total_accepted, i + 1,
-                                                                         total_accepted / (i + 1) * 100.0))
-
-        print('Accepted {} out of {} samples ({:.02f}%).'.format(total_accepted, self.n_samples,
-                                                                 total_accepted / self.n_samples * 100.0))
+            print('Accepted: {} of {} ({:.02f}%) samples so far.'.format(accepted, i + 1, accepted / (i + 1) * 100.0))
 
         return thetas
 
-    def _mh_init(self) -> Dict[str, float]:
-        if self.theta_init is None:
-            return {var_name: dist.rvs(random_state=self.random_state) for var_name, dist in self.prior.items()}
-        else:
-            return self.theta_init.copy()
-
-    def _mh_step(self, y: np.ndarray, theta_old: Dict[str, float], loglik_hat_old: float) -> Tuple[
-        Dict[str, float], float, bool]:
-        if not self._steps_until_tune and self.tune:
-            self._tune_scale()
-            self._steps_until_tune = self.tune_interval
-            self._accepted = 0
-
-        theta_new = self._sample_from_proposal(theta_old)
-
-        if self.tune:
-            # Translate to center, scale, translate back.
-            theta_new = {var_name: theta_old[var_name] + (var_value - theta_old[var_name]) * self._scaling for
-                         var_name, var_value in theta_new.items()}
-
-        log_ratio = 0.0
-
-        for var_name, prior in self.prior.items():
-            log_ratio += prior.logpdf(theta_new[var_name])
-            log_ratio -= prior.logpdf(theta_old[var_name])
-
-        if not np.isfinite(log_ratio):
-            return theta_old, loglik_hat_old, False  # Rejected.
-
-        for var_name, proposal in filter(lambda proposal_kv: not proposal_kv[1].is_symmetric, self.proposal.items()):
-            log_ratio += proposal.log_prob(theta_old[var_name], theta_new[var_name])
-            log_ratio -= proposal.log_prob(theta_new[var_name], theta_old[var_name])
-
-        # FIXME: THIS SHOULD APPARENTLY NOT BE HERE.
-        # if not np.isfinite(log_ratio):
-        #     return theta_old, loglik_hat_old, False  # Rejected.
-
-        loglik_hat_new = self._log_likelihood_estimate(y, theta_new)
-
-        # print('loglik new', loglik_hat_new)
-        # print('theta new', theta_new)
-        # print()
-
-        log_ratio += loglik_hat_new
-        log_ratio -= loglik_hat_old
-
-        self._steps_until_tune -= 1
-
-        if np.isfinite(log_ratio) and np.log(self.random_state.uniform()) < log_ratio:
-            self._accepted += 1
-            return theta_new, loglik_hat_new, True  # Accepted.
-        else:
-            return theta_old, loglik_hat_old, False  # Rejected.
-
-    def _tune_scale(self):
-        """
-        Tunes the scaling parameter for the proposal distribution
-        according to the acceptance rate over the last tune_interval:
-         Rate   Variance adaptation
-        ------  -------------------
-        <0.001        x 0.1
-        <0.05         x 0.5
-        <0.2          x 0.9
-        >0.5          x 1.1
-        >0.75         x 2.0
-        >0.95         x 10.0
-
-        Shamelessly stolen from:
-        `https://github.com/pymc-devs/pymc3/blob/master/pymc3/step_methods/metropolis.py`.
-        """
-        acceptance_rate = self._accepted / self.tune_interval
-
-        if acceptance_rate < 0.001:
-            # Reduce by 90 percent.
-            self._scaling *= 0.1
-        elif acceptance_rate < 0.05:
-            # Reduce by 50 percent.
-            self._scaling *= 0.5
-        elif acceptance_rate < 0.2:
-            # Reduce by 10 percent.
-            self._scaling *= 0.9
-        elif acceptance_rate > 0.95:
-            # Increase by a factor of 10.
-            self._scaling *= 10.0
-        elif acceptance_rate > 0.75:
-            # Increase by a factor of 2.
-            self._scaling *= 2.0
-        elif acceptance_rate > 0.5:
-            # Increase by 10 percent.
-            self._scaling *= 1.1
-
-    def _sample_from_proposal(self, theta_old: Dict[str, float]) -> Dict[str, float]:
-        return {var_name: dist.sample(center=theta_old[var_name], random_state=self.random_state) for var_name, dist in
-                self.proposal.items()}
-
     @abc.abstractmethod
-    def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
+    def _log_likelihood_estimate(self, y, theta):
         pass
 
 
-class PMH(MH, abc.ABC):
-    """
-    Estimates the parameters of the state space model given by
-      p(x_{0:T}, y_{1:T}; \theta) = \pi(x_0) \prod_{t=1}^T f(x_t \mid x_{t-1}; \theta) g(y_t \mid x_t; \theta),
-    where pi(.) is the prior distribution of the initial state,
-          f(. \mid .; \theta) is the transition distribution,
-          g(. \mid .; \theta) is the emission distribution.
-    The intractable likelihood p(y_{1:T}; \theta) is estimated using the particle filter.
-
-    Assumes the following model:
-    x_0 -> x_1 -> x_2 -> ... -> x_T
-            |      |             |
-           y_1    y_2           y_T
-    """
-
+class MetropolisHastingsPF(MetropolisHastings, abc.ABC):
     def __init__(self,
-                 n_samples: int,
-                 n_particles: int,
-                 state_init: np.ndarray,
-                 const: Dict[str, float],
-                 prior: Dict[str, rv_continuous],
-                 proposal: Dict[str, ProposalDistribution],
-                 tune: bool = True,
-                 tune_interval: int = 100,
-                 theta_init: Optional[Dict[str, float]] = None,
+                 n_samples,
+                 n_particles,
+                 state_init,
+                 const,
+                 prior,
+                 proposal,
+                 tune=True,
+                 tune_interval=100,
+                 theta_init=None,
                  random_state=None):
-        super(PMH, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal, tune=tune,
-                                  tune_interval=tune_interval, theta_init=theta_init, random_state=random_state)
+        super(MetropolisHastingsPF, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal, tune=tune,
+                                                   tune_interval=tune_interval, theta_init=theta_init,
+                                                   random_state=random_state)
 
         self.n_particles = n_particles
         self.state_init = state_init
         self.const = const
 
-    def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
-        T = y.shape[0]
-        x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
-        assert len(x.shape) == 2 and x.shape[1] == self.n_particles
-
-        log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
-        log_w[0] = -np.log(self.n_particles)
-
-        for t in range(1, T + 1):
-            w = np.exp(log_w[t - 1])
-            w /= np.sum(w)
-
-            indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-            x = self._transition(state=x[:, indices], t=t, theta=theta)
-
-            log_w[t] = self._observation_log_prob(y=y[t - 1], state=x, theta=theta)
-
-        return np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
-
-    @abc.abstractmethod
-    def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
-        pass
-
-    @abc.abstractmethod
-    def _observation_log_prob(self, y: np.ndarray, state: np.ndarray, theta: Dict[str, float]) -> float:
-        pass
-
-
-# TODO: Store the sampler state so that we can load it and continue sampling some more.
-class ABCMH(MH, abc.ABC):
-    def __init__(self,
-                 n_samples: int,
-                 n_particles: int,
-                 alpha: float,
-                 hpr_p: float,
-                 state_init: np.ndarray,
-                 const: Dict[str, float],
-                 prior: Dict[str, rv_continuous],
-                 proposal: Dict[str, ProposalDistribution],
-                 kernel: str,
-                 noisy_abc: bool = False,
-                 tune: bool = True,
-                 tune_interval: int = 100,
-                 theta_init: Optional[Dict[str, float]] = None,
-                 random_state=None):
-        assert int(alpha * n_particles) <= n_particles, \
-            'the number of covered pseudo-measurements must be at most the number of particles'
-
-        super(ABCMH, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal, tune=tune,
-                                    tune_interval=tune_interval, theta_init=theta_init, random_state=random_state)
-
-        self.n_particles = n_particles
-        self.n_particles_covered = int(alpha * n_particles)
-        self.hpr_p = hpr_p
-        self.state_init = state_init
-        self.const = const
-
-        if kernel == 'gaussian':
-            self.kernel_f = GaussianKernel
-        elif kernel == 'cauchy':
-            self.kernel_f = CauchyKernel
+    def _log_likelihood_estimate(self, y, theta):
+        if self.state_init.ndim == 1:
+            x = np.tile(self.state_init, (self.n_particles, 1))
         else:
-            raise ValueError('Unknown kernel: {}.'.format(kernel))
+            x = self.state_init
 
-        self.kernel = []
-        self.noisy_abc = noisy_abc
-
-    def do_inference(self, y: np.ndarray) -> List[Dict[str, float]]:
-        assert y.ndim == 2, 'the dimensionality of `y` must be y-dim x time series length'
-
-        # Create a separate kernel for each y dimension.
-        self.kernel = [self.kernel_f() for _ in range(y.shape[0])]
-
-        return super(ABCMH, self).do_inference(y=y)
-
-    def _log_likelihood_estimate1(self, y: np.ndarray, theta: Dict[str, float]) -> float:
+        assert x.ndim == 2 and x.shape[0] == self.n_particles
         T = y.shape[0]
-        x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
-        assert len(x.shape) == 2 and x.shape[1] == self.n_particles
-        ll = 0.0
+        x_dim = x.shape[1]
+        loglik = 0.0
 
         for t in range(T):
             x = self._transition(x, t + 1, theta)
-            u = self._measurement_model(x, theta)
-            u_alpha = self._alphath_closest(u=u, y=y[t])
-            self._tune_kernel_scales(y=y[t], u=u_alpha)
-            lw = self._log_kernel(u, y[t])
+            assert x.ndim == 2 and x.shape == (self.n_particles, x_dim)
+
+            lw = self._observation_log_prob(y[t], x, theta)
             w = np.exp(lw)
+            assert lw.ndim == 1 and lw.shape[0] == self.n_particles
 
             if np.max(w) < 1e-20:
-                raise ValueError('Underflow')
+                print('Warning: Particle filter bombed.')
+                return -1e99
 
-            ll += logsumexp(lw) - np.log(self.n_particles)
-            indices = self.random_state.choice(self.n_particles, self.n_particles, replace=True, p=w/np.sum(w))
-            x = x[:, indices]
+            loglik += np.log(np.mean(w))
+            rows = self.random_state.choice(self.n_particles, self.n_particles, replace=True, p=w / np.sum(w))
+            x = x[rows]
 
-        print(ll)
-        return ll
-
-    def _log_likelihood_estimate(self, y: np.ndarray, theta: Dict[str, float]) -> float:
-        T = y.shape[0]
-        x = np.tile(self.state_init[:, np.newaxis], [1, self.n_particles])
-        assert len(x.shape) == 2 and x.shape[1] == self.n_particles
-
-        if self.noisy_abc:
-            y = y.copy()
-
-        log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
-        log_w[0] = -np.log(self.n_particles)
-
-        for t in range(1, T + 1):
-            w = np.exp(log_w[t - 1])
-            w /= np.sum(w)
-
-            indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-            x = self._transition(state=x[:, indices], t=t, theta=theta)
-            u = self._measurement_model(state=x, theta=theta)
-
-            assert y[t - 1].shape[0] == u.shape[0]
-
-            u_alpha = self._alphath_closest(u=u, y=y[t - 1])
-            assert u_alpha.shape[0] == u.shape[0]
-
-            self._tune_kernel_scales(y=y[t - 1], u=u_alpha)
-
-            if self.noisy_abc:
-                y[t - 1] += self._sample_from_kernel()
-
-            log_w[t] = self._log_kernel(u=u, center=y[t - 1])
-
-        out = np.sum(logsumexp(log_w[1:], axis=1)) - T * np.log(self.n_particles)
-
-        # Underflow check.
-        # if out < -20:
-        #     return -1500
-        # else:
-        #     return out
-        return out
-
-    def _alphath_closest(self, u: np.ndarray, y: np.ndarray) -> np.ndarray:
-        distances_squared = np.power(y[:, np.newaxis] - u, 2)
-
-        # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
-        # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
-        alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1, axis=-1)[:,
-                              self.n_particles_covered - 1]
-
-        return u[np.arange(u.shape[0]), alphath_closest_idx]
-
-    def _tune_kernel_scales(self, y: np.ndarray, u: np.ndarray):
-        for y_elem, u_elem, kernel in zip(y, u, self.kernel):
-            kernel.tune_scale(y=y_elem, u=u_elem, p=self.hpr_p)
-
-    def _sample_from_kernel(self) -> np.ndarray:
-        return np.array([kernel.sample(random_state=self.random_state) for kernel in self.kernel], dtype=float)
-
-    def _log_kernel(self, u: np.ndarray, center: np.ndarray) -> float:
-        return sum(kernel.log_kernel(u=u[i], center=center[i]) for i, kernel in enumerate(self.kernel))
+        return loglik
 
     @abc.abstractmethod
-    def _transition(self, state: np.ndarray, t: int, theta: Dict[str, float]) -> np.ndarray:
+    def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
         pass
 
     @abc.abstractmethod
-    def _measurement_model(self, state: np.ndarray, theta: Dict[str, float]) -> np.array:
+    def _observation_log_prob(self, y: np.ndarray, x: np.ndarray, theta: np.ndarray) -> np.ndarray:
         pass
