@@ -6,8 +6,19 @@ import numpy as np
 from scipy import stats
 from statsmodels.graphics.tsaplots import plot_acf
 
-from mcmc import Distribution, MetropolisHastingsPF, Prior, Proposal
+from mcmc import Distribution, MetropolisHastingsABC, MetropolisHastingsPF, Prior, Proposal
 from utils import check_random_state
+
+
+class ABCSimpleSSM(MetropolisHastingsABC):
+    def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
+        V_n = self.random_state.normal(loc=0.0, scale=np.sqrt(theta[0]), size=(self.n_particles, 1))
+        x_new = x / 2 + 25 * (x / (1 + np.power(x, 2))) + 8 * np.cos(1.2 * t) + V_n
+        assert x.shape == x_new.shape, '{} != {}'.format(x.shape, x_new.shape)
+        return x_new
+
+    def _measurement_model(self, x: np.ndarray, theta: np.ndarray) -> np.array:
+        return x
 
 
 class ParticleSimpleSSM(MetropolisHastingsPF):
@@ -53,7 +64,7 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
 
 
 def main():
-    algorithm = 'pmh'
+    algorithm = 'abcmh'
     path = './simple_ssm_{}'.format(algorithm)
     random_state = check_random_state(1)
 
@@ -87,7 +98,24 @@ def main():
     theta_init = np.array([20.0])
 
     if algorithm == 'abcmh':
-        raise NotImplementedError()
+        alpha = 0.9
+        hpr_p = 0.95
+        kernel = 'gaussian'
+
+        mcmc = ABCSimpleSSM(
+            n_samples=n_samples,
+            n_particles=n_particles,
+            alpha=alpha,
+            hpr_p=hpr_p,
+            state_init=state_init,
+            const=const,
+            kernel=kernel,
+            prior=prior,
+            proposal=proposal,
+            tune=False,
+            theta_init=theta_init,
+            random_state=random_state
+        )
     else:
         mcmc = ParticleSimpleSSM(
             n_samples=n_samples,
