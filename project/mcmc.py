@@ -347,7 +347,7 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
         assert u.ndim == 2 and u.shape == (self.n_particles, y_dim)
         assert y_t.ndim == 1 and y_t.shape == (y_dim,)
 
-        distances_squared = np.power(y_t[np.newaxis, :] - u, 2)  # FIXME: The axes should be transposed, no?
+        distances_squared = np.power(y_t[np.newaxis, :] - u, 2)
 
         # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
         # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
