@@ -18,7 +18,7 @@ class ABCSimpleSSM(MetropolisHastingsABC):
         return x_new
 
     def _measurement_model(self, x: np.ndarray, theta: np.ndarray) -> np.array:
-        return x
+        return x[:, 0]
 
 
 class ParticleSimpleSSM(MetropolisHastingsPF):
@@ -64,7 +64,7 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
 
 
 def main():
-    algorithm = 'abcmh'
+    algorithm = 'pmh'
     path = './simple_ssm_{}'.format(algorithm)
     random_state = check_random_state(1)
 
@@ -96,6 +96,7 @@ def main():
     ])
 
     theta_init = np.array([20.0])
+    random_state = check_random_state(1)
 
     if algorithm == 'abcmh':
         alpha = 0.9

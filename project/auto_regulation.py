@@ -148,6 +148,7 @@ def main():
     ])
 
     theta_init = np.log(np.array([0.1, 0.7, 0.35, 0.2, 0.3, 0.1]))
+    random_state = check_random_state(1)
 
     t, x, y = simulate_xy(os.path.join(path, 'simulated_data.pickle'), T=10, theta=theta_init,
                           const=const, random_state=random_state)

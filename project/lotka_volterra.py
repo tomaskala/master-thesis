@@ -68,6 +68,7 @@ def main():
     ])
 
     theta_init = np.log(np.array([1, 0.005, 0.6]))
+    random_state = check_random_state(1)
 
     if algorithm == 'abcmh':
         raise NotImplementedError()

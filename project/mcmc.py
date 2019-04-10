@@ -103,7 +103,7 @@ class MetropolisHastings(abc.ABC):
         :param y: observation sequence: array, shaped (T, y-dim), T denotes the time
         :return: sampled parameters: array, shaped (n_samples, theta-dim)
         """
-        theta = self.prior.sample() if self.theta_init is None else self.theta_init
+        theta = self.prior.sample(random_state=self.random_state) if self.theta_init is None else self.theta_init
 
         assert theta.ndim == 1
         assert y.ndim == 2
@@ -113,7 +113,7 @@ class MetropolisHastings(abc.ABC):
         accepted = 0
 
         for i in range(self.n_samples):
-            theta_prop = self.proposal.sample(theta)
+            theta_prop = self.proposal.sample(theta, random_state=self.random_state)
             log_ratio = 0.0
 
             log_ratio += self.prior.log_prob(theta_prop)
@@ -293,18 +293,20 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
         self.const = const
 
         if kernel == 'gaussian':
-            self.kernel_f = GaussianKernel
+            self.kernel = GaussianKernel()
+            # self.kernel_f = GaussianKernel
         elif kernel == 'cauchy':
-            self.kernel_f = CauchyKernel
+            self.kernel = CauchyKernel()
+            # self.kernel_f = CauchyKernel
         else:
             raise ValueError('Unknown kernel: {}.'.format(kernel))
 
-        self.kernel = []
+        # self.kernel = []
 
-    def do_inference(self, y):
-        # Create a separate kernel for each y dimension.
-        self.kernel = [self.kernel_f() for _ in range(y.shape[0])]
-        return super(MetropolisHastingsABC, self).do_inference(y=y)
+    # def do_inference(self, y):
+    #     # Create a separate kernel for each y dimension.
+    #     self.kernel = [self.kernel_f() for _ in range(y.shape[0])]
+    #     return super(MetropolisHastingsABC, self).do_inference(y=y)
 
     def _log_likelihood_estimate(self, y, theta):
         if self.state_init.ndim == 1:
@@ -313,7 +315,8 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
             x = self.state_init
 
         assert x.ndim == 2 and x.shape[0] == self.n_particles
-        T, y_dim = y.shape
+        # T, y_dim = y.shape
+        T = y.shape[0]
         x_dim = x.shape[1]
         loglik = 0.0
 
@@ -322,10 +325,10 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
             assert x.ndim == 2 and x.shape == (self.n_particles, x_dim)
 
             u = self._measurement_model(x, theta)
-            assert u.ndim == 2 and u.shape == (self.n_particles, y_dim)
+            # assert u.ndim == 2 and u.shape == (self.n_particles, )
 
             u_alpha = self._alphath_closest(u=u, y_t=y[t])
-            assert u_alpha.ndim == 1 and u_alpha.shape == (y_dim,)
+            # assert u_alpha.ndim == 1 and u_alpha.shape == (y_dim,)
 
             self._tune_kernel_scales(u_alpha=u_alpha, y_t=y[t])
 
@@ -344,42 +347,50 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
         return loglik
 
     def _alphath_closest(self, u: np.ndarray, y_t: np.ndarray) -> np.ndarray:
-        y_dim = y_t.shape[0]
-        assert u.ndim == 2 and u.shape == (self.n_particles, y_dim)
-        assert y_t.ndim == 1 and y_t.shape == (y_dim,)
-
-        distances_squared = np.power(y_t[np.newaxis, :] - u, 2)
-
-        # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
-        # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
-        alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1, axis=0)[
+        distances_squared = np.power(y_t - u, 2)
+        alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1)[
             self.n_particles_covered - 1]
-        assert alphath_closest_idx.ndim == 1 and alphath_closest_idx.shape == (y_dim,)
+        return u[alphath_closest_idx]
 
-        return u[alphath_closest_idx, np.arange(y_dim)]
+        # y_dim = y_t.shape[0]
+        # assert u.ndim == 2 and u.shape == (self.n_particles, y_dim)
+        # assert y_t.ndim == 1 and y_t.shape == (y_dim,)
+        #
+        # distances_squared = np.power(y_t[np.newaxis, :] - u, 2)
+        #
+        # # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
+        # # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
+        # alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1, axis=0)[
+        #     self.n_particles_covered - 1]
+        # assert alphath_closest_idx.ndim == 1 and alphath_closest_idx.shape == (y_dim,)
+        #
+        # return u[alphath_closest_idx, np.arange(y_dim)]
 
     def _tune_kernel_scales(self, u_alpha: np.ndarray, y_t: np.ndarray):
-        assert u_alpha.ndim == 1 and u_alpha.shape == y_t.shape
-
-        for u_elem, y_elem, kernel in zip(u_alpha, y_t, self.kernel):
-            kernel.tune_scale(u=u_elem, y=y_elem, p=self.hpr_p)
+        # assert u_alpha.ndim == 1 and u_alpha.shape == y_t.shape
+        #
+        # for u_elem, y_elem, kernel in zip(u_alpha, y_t, self.kernel):
+        #     kernel.tune_scale(u=u_elem, y=y_elem, p=self.hpr_p)
+        self.kernel.tune_scale(u_alpha, y_t, self.hpr_p)
 
     def _sample_from_kernel(self) -> np.ndarray:  # TODO: Use if noisy_abc is True.
-        return np.array([kernel.sample(random_state=self.random_state) for kernel in self.kernel], dtype=float)
+        # return np.array([kernel.sample(random_state=self.random_state) for kernel in self.kernel], dtype=float)
+        return self.kernel.sample(random_state=self.random_state)
 
     def _log_kernel(self, u: np.ndarray, y_t: np.ndarray) -> np.ndarray:
-        y_dim = y_t.shape[0]
-        assert u.ndim == 2 and u.shape == (self.n_particles, y_dim)
-        assert y_t.ndim == 1 and y_t.shape == (y_dim,)
-
-        log_kernel = np.zeros(shape=self.n_particles, dtype=float)
-
-        for u_elem, y_elem, kernel in zip(u.T, y_t, self.kernel):
-            lk = kernel.log_kernel(u=u_elem, y=y_elem)
-            assert lk.ndim == 1 and lk.shape == (self.n_particles,)
-            log_kernel += lk
-
-        return log_kernel
+        # y_dim = y_t.shape[0]
+        # assert u.ndim == 2 and u.shape == (self.n_particles, y_dim)
+        # assert y_t.ndim == 1 and y_t.shape == (y_dim,)
+        #
+        # log_kernel = np.zeros(shape=self.n_particles, dtype=float)
+        #
+        # for u_elem, y_elem, kernel in zip(u.T, y_t, self.kernel):
+        #     lk = kernel.log_kernel(u=u_elem, y=y_elem)
+        #     assert lk.ndim == 1 and lk.shape == (self.n_particles,)
+        #     log_kernel += lk
+        #
+        # return log_kernel
+        return self.kernel.log_kernel(u, y_t)
 
     @abc.abstractmethod
     def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
