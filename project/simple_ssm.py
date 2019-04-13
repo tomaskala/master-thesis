@@ -18,7 +18,8 @@ class ABCSimpleSSM(MetropolisHastingsABC):
         return x_new
 
     def _measurement_model(self, x: np.ndarray, theta: np.ndarray) -> np.array:
-        return x[:, 0]
+        assert x.shape == (self.n_particles, 1)
+        return np.power(x[:, 0], 2) / 20
 
 
 class ParticleSimpleSSM(MetropolisHastingsPF):
@@ -29,7 +30,7 @@ class ParticleSimpleSSM(MetropolisHastingsPF):
         return x_new
 
     def _observation_log_prob(self, y: np.ndarray, x: np.ndarray, theta: np.ndarray) -> np.ndarray:
-        log_prob = np.sum(stats.norm.logpdf(y, x, np.sqrt(self.const['sigma2_w'])), axis=1)
+        log_prob = np.sum(stats.norm.logpdf(y, np.power(x, 2) / 20, np.sqrt(self.const['sigma2_w'])), axis=1)
         assert log_prob.ndim == 1 and log_prob.shape[0] == self.n_particles
         return log_prob
 
@@ -52,10 +53,10 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
             x_prev = x[n]
 
             w = random_state.normal(loc=0.0, scale=np.sqrt(sigma2_w))
-            y[n] = x[n] + w
+            y[n] = np.power(x[n], 2) / 20 + w
 
         x = np.append(x_0, x)
-        y = y[:, np.newaxis]
+        # y = y[:, np.newaxis]
 
         with open(path, mode='wb') as f:
             pickle.dump((x, y), f)
@@ -64,7 +65,7 @@ def simulate_xy(path: str, T: int, sigma2_v: float, sigma2_w: float, sigma2_x1: 
 
 
 def main():
-    algorithm = 'pmh'
+    algorithm = 'abcmh'
     path = './simple_ssm_{}'.format(algorithm)
     random_state = check_random_state(1)
 
@@ -73,6 +74,7 @@ def main():
 
     n_samples = 2000
     n_particles = 500
+    burn_in = 0
     thinning = 10
 
     T = 500
@@ -80,8 +82,8 @@ def main():
     sigma2_w = 1.0
     sigma2_x1 = 0.5
     state_init = stats.norm.rvs(loc=0.0, scale=np.sqrt(sigma2_x1), size=(n_particles, 1), random_state=random_state)
-    x, y = simulate_xy(os.path.join(path, 'simulated_data.pickle'), T, sigma2_v, sigma2_w, sigma2_x1,
-                       random_state=random_state)
+    x, y = simulate_xy(os.path.join(path, 'simulated_data.pickle'), T=T, sigma2_v=sigma2_v,
+                       sigma2_w=sigma2_w, sigma2_x1=sigma2_x1, random_state=1)
 
     const = {
         'sigma2_w': sigma2_w
@@ -141,7 +143,7 @@ def main():
         with open(sampled_theta_path, 'wb') as f:
             pickle.dump(theta, f)
 
-    theta = theta[::thinning]
+    theta = theta[burn_in::thinning]
     truth = np.array([sigma2_v])
     pretty_names = [r'$\sigma_v^2$']
 
@@ -161,6 +163,9 @@ def main():
         ax3.set_title('Histogram')
         ax3.hist(param_values, density=True, bins=30)
         ax3.axvline(truth[i], color='red', lw=2)
+
+        linspace = np.linspace(np.min(param_values), np.max(param_values), 1000)
+        ax3.plot(linspace, prior.distributions[i].pdf(linspace), color='green')
 
         plt.show()
 

@@ -12,8 +12,17 @@ from scipy import stats
 from statsmodels.graphics.tsaplots import plot_acf
 
 from auto_regulation_routines import step_ar
-from mcmc import Distribution, MetropolisHastingsPF, Prior, Proposal
+from mcmc import Distribution, MetropolisHastingsABC, MetropolisHastingsPF, Prior, Proposal
 from utils import check_random_state
+
+
+class ABCAutoRegulation(MetropolisHastingsABC):
+    def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
+        return step_ar(x, self.const['times'][t - 1], self.const['times'][t] - self.const['times'][t - 1], theta,
+                       self.const['k'], self.const['c5'], self.const['c6'])
+
+    def _measurement_model(self, x: np.ndarray, theta: np.ndarray) -> np.array:
+        return x[:, 1] + 2 * x[:, 2]
 
 
 class ParticleAutoRegulation(MetropolisHastingsPF):
@@ -101,7 +110,7 @@ def simulate_xy(path: str, T: int, theta: np.ndarray, const: Dict[str, float], r
 
 
 def main():
-    algorithm = 'pmh'
+    algorithm = 'abcmh'
     path = './auto_regulation_{}'.format(algorithm)
     random_state = check_random_state(1)
 
@@ -155,7 +164,24 @@ def main():
     const['times'] = t
 
     if algorithm == 'abcmh':
-        raise NotImplementedError()
+        alpha = 0.9
+        hpr_p = 0.95
+        kernel = 'gaussian'
+
+        mcmc = ABCAutoRegulation(
+            n_samples=n_samples,
+            n_particles=n_particles,
+            alpha=alpha,
+            hpr_p=hpr_p,
+            state_init=state_init,
+            const=const,
+            kernel=kernel,
+            prior=prior,
+            proposal=proposal,
+            tune=False,
+            theta_init=theta_init,
+            random_state=random_state
+        )
     else:
         mcmc = ParticleAutoRegulation(
             n_samples=n_samples,

@@ -11,8 +11,16 @@ from scipy import stats
 from statsmodels.graphics.tsaplots import plot_acf
 
 from lotka_volterra_routines import step_lv
-from mcmc import Distribution, MetropolisHastingsPF, Prior, Proposal
+from mcmc import Distribution, MetropolisHastingsABC, MetropolisHastingsPF, Prior, Proposal
 from utils import check_random_state
+
+
+class ABCLotkaVolterra(MetropolisHastingsABC):
+    def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
+        return step_lv(x, self.const['times'][t - 1], self.const['times'][t] - self.const['times'][t - 1], theta)
+
+    def _measurement_model(self, x: np.ndarray, theta: np.ndarray) -> np.array:
+        return x
 
 
 class ParticleLotkaVolterra(MetropolisHastingsPF):
@@ -71,7 +79,24 @@ def main():
     random_state = check_random_state(1)
 
     if algorithm == 'abcmh':
-        raise NotImplementedError()
+        alpha = 0.9
+        hpr_p = 0.95
+        kernel = 'gaussian'
+
+        mcmc = ABCLotkaVolterra(
+            n_samples=n_samples,
+            n_particles=n_particles,
+            alpha=alpha,
+            hpr_p=hpr_p,
+            state_init=state_init,
+            const=const,
+            kernel=kernel,
+            prior=prior,
+            proposal=proposal,
+            tune=False,
+            theta_init=theta_init,
+            random_state=random_state
+        )
     else:
         mcmc = ParticleLotkaVolterra(
             n_samples=n_samples,
