@@ -1,0 +1,159 @@
+\documentclass[twoside]{report}
+
+\usepackage[czech,english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,width=150mm,top=25mm,bottom=25mm]{geometry}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+
+\usepackage{epstopdf}
+
+\usepackage[nottoc]{tocbibind}
+\usepackage[authoryear,round]{natbib}
+
+\usepackage{float}
+
+\usepackage{bm}
+\usepackage{datetime}
+\usepackage{hyperref}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+\usepackage{interval}
+
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{color}
+\usepackage{subcaption}
+
+\usepackage{multirow}
+\usepackage{pdfpages}
+
+\addto\extrasenglish{%
+  \renewcommand{\chapterautorefname}{Chapter}%
+  \renewcommand{\sectionautorefname}{Section}%
+  \renewcommand{\subsectionautorefname}{Subsection}%
+}
+
+
+%% Definitions %%
+
+% ForEach loop
+\algnewcommand\algorithmicforeach{\textbf{for each}}
+\algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+
+% Break
+\newcommand{\Break}{\State \textbf{break} }
+
+% Input
+\algnewcommand\algorithmicinput{\textbf{Input:}}
+\algnewcommand\Input{\item[\algorithmicinput]}
+
+% Output
+\algnewcommand\algorithmicoutput{\textbf{Output:}}
+\algnewcommand\Output{\item[\algorithmicoutput]}
+
+\newcommand{\R}{\mathbb{R}}  % Pretty set of real numbers.
+\newcommand{\N}{\mathbb{N}}  % Pretty set of natural numbers.
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}  % The ceiling function.
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}  % The floor function.
+
+\newcommand{\vect}[1]{\bm{\MakeLowercase{#1}}}  % Pretty vectors.
+\newcommand{\mat}[1]{\mathbf{#1}}  % Pretty matrices.
+
+\DeclareMathOperator*{\argmin}{argmin}  % Argmin
+\DeclareMathOperator*{\argmax}{argmax}  % Argmax
+
+
+%% Title %%
+\newcommand*{\myTitle}{\begingroup 
+    \centering 
+    \vspace*{\baselineskip} 
+    
+    
+    {\LARGE Bayesian Parameter Estimation of State-Space Models with Intractable Likelihood}    
+    \vspace*{5\baselineskip} 
+    
+    {\Large Bc. Tom\'{a}\v{s} Kala\par} 
+    \scshape
+    Supervisor: Ing. Kamil Dedecius, PhD.
+    
+    \vspace*{1\baselineskip}
+    \monthname \ \the\year
+    
+    \vfill
+    
+    \includegraphics[width=0.4\textwidth]{lion}
+    
+    \vspace*{1\baselineskip}
+    Department of Computer Science\\
+    Faculty of Electrical Engineering\\
+    Czech Technical University in Prague\\[\baselineskip]
+    
+    \endgroup\clearpage}
+
+
+%% Document %%
+\begin{document}
+\selectlanguage{english}
+
+% Title page
+%\input{tex/titlepage}
+\begin{titlepage}
+\myTitle
+\end{titlepage}
+
+\pagenumbering{roman}
+
+% Assignment
+\shorthandoff{-}  % Czech babel makes trouble here.
+\includepdf[pages=-]{tex/assignment}
+
+% Abstract
+\selectlanguage{english}
+\begin{abstract}
+    Abstract in English
+\end{abstract}
+\selectlanguage{czech}
+\begin{abstract}
+    Abstract in Czech
+\end{abstract}
+\selectlanguage{english}
+
+\input{tex/declaration}
+\input{tex/acknowledgements}
+
+% Table of contents
+\tableofcontents
+\listoffigures
+\listoftables
+
+% Chapters
+\pagenumbering{arabic}
+\input{tex/chapters/introduction}
+\input{tex/chapters/related_work}
+\input{tex/chapters/inference}
+\input{tex/chapters/abc}
+\input{tex/chapters/applications}
+\input{tex/chapters/conclusion}
+
+
+% Bibliography
+\bibliographystyle{abbrvnat}
+\bibliography{tex/references}
+
+
+% Appendices
+%\appendix
+%\chapter{Real events used for evaluation}
+%\label{app:real-events}
+%\input{tex/chapters/appendix_real_events}
+
+%\chapter{DVD contents}
+%\input{tex/chapters/dvd_contents}
+
+
+\end{document}
