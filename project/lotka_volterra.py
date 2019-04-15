@@ -49,7 +49,7 @@ def main():
         os.makedirs(path)
 
     t, y = load_data('./data/LV_data.pickle')
-    n_samples = 10000
+    n_samples = 2000
     n_particles = 100
     thinning = 10
 

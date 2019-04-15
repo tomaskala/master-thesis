@@ -1,9 +1,10 @@
 import abc
 import math
-import warnings
-from typing import List
+import numbers
+from typing import List, Union
 
 import numpy as np
+from scipy.special import logsumexp, softmax
 from scipy.stats import cauchy, laplace, norm, rv_continuous, uniform
 
 from utils import check_random_state
@@ -232,20 +233,12 @@ class MetropolisHastingsPF(MetropolisHastings, abc.ABC):
 
             lw = self._observation_log_prob(y[t], x, theta)
             assert lw.ndim == 1 and lw.shape == (self.n_particles,)
-            w = np.exp(lw)
+            loglik += logsumexp(lw)
 
-            if np.max(w) < 1e-20:
-                warnings.warn('Weight underflow.', RuntimeWarning)
-                return -1e99
-
-            log_mean = math.log(np.mean(w))
-            assert log_mean <= 0.0
-
-            loglik += log_mean
-
-            rows = self.random_state.choice(self.n_particles, self.n_particles, replace=True, p=w / np.sum(w))
+            rows = self.random_state.choice(self.n_particles, self.n_particles, replace=True, p=softmax(lw))
             x = x[rows]
 
+        loglik -= T * math.log(self.n_particles)
         assert loglik <= 0.0
         return loglik
 
@@ -298,9 +291,6 @@ class Kernel(abc.ABC):
 
 class GaussianKernel(Kernel):
     def __call__(self, u: np.ndarray, y: float) -> np.ndarray:
-        # dist = np.power(u - y, 2)
-        # gamma = 1 / (2 * (self.scale ** 2))
-        # return -gamma * dist
         return norm.logpdf(x=u, loc=y, scale=self.scale)
 
     def _tune_scale(self, u: float, y: float):
@@ -309,8 +299,7 @@ class GaussianKernel(Kernel):
 
 class CauchyKernel(Kernel):
     def __call__(self, u: np.ndarray, y: float) -> np.ndarray:
-        dist = np.power(u - y, 2)
-        return -np.log1p(dist / self.scale)
+        return cauchy.logpdf(x=u, loc=y, scale=self.scale)
 
     def _tune_scale(self, u: float, y: float):
         self.scale = abs(u - y) / cauchy.ppf(q=((self.p + 1) / 2))
@@ -318,8 +307,7 @@ class CauchyKernel(Kernel):
 
 class LaplaceKernel(Kernel):
     def __call__(self, u: np.ndarray, y: float) -> np.ndarray:
-        dist = np.abs(u - y)
-        return -dist / self.scale
+        return laplace.logpdf(x=u, loc=y, scale=self.scale)
 
     def _tune_scale(self, u: float, y: float):
         self.scale = abs(u - y) / laplace.ppf(q=((self.p + 1) / 2))
@@ -328,8 +316,7 @@ class LaplaceKernel(Kernel):
 class UniformKernel(Kernel):
     def __call__(self, u: np.ndarray, y: float) -> np.ndarray:
         loc = y - self.scale / 2
-        return np.log(1.0 * ((loc <= u) & (u <= loc + self.scale)))
-        # return uniform.logpdf(x=u, loc=loc, scale=self.scale)
+        return uniform.logpdf(x=u, loc=loc, scale=self.scale)
 
     def _tune_scale(self, u: float, y: float):
         self.scale = abs(u - y) / uniform.ppf(q=((self.p + 1) / 2))
@@ -359,19 +346,29 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
 
         self.n_particles = n_particles
         self.n_particles_covered = int(alpha * n_particles)
+        self.hpr_p = hpr_p
         self.state_init = state_init
         self.const = const
+        self.kernel = None
 
         if kernel == 'gaussian':
-            self.kernel = GaussianKernel(hpr_p)
+            self.kernel_f = GaussianKernel
         elif kernel == 'cauchy':
-            self.kernel = CauchyKernel(hpr_p)
+            self.kernel_f = CauchyKernel
         elif kernel == 'laplace':
-            self.kernel = LaplaceKernel(hpr_p)
+            self.kernel_f = LaplaceKernel
         elif kernel == 'uniform':
-            self.kernel = UniformKernel(hpr_p)
+            self.kernel_f = UniformKernel
         else:
             raise ValueError('Unknown kernel: {}.'.format(kernel))
+
+    def do_inference(self, y):
+        if y.ndim == 1:
+            self.kernel = self.kernel_f(self.hpr_p)
+        else:
+            self.kernel = [self.kernel_f(self.hpr_p) for _ in range(y.shape[1])]
+
+        return super(MetropolisHastingsABC, self).do_inference(y=y)
 
     def _log_likelihood_estimate(self, y, theta):
         if self.state_init.ndim == 1:
@@ -389,91 +386,61 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
             assert x.ndim == 2 and x.shape == (self.n_particles, x_dim)
 
             u = self._measurement_model(x, theta)
-            assert u.ndim == 1 and u.shape == (self.n_particles,)
+            assert (u.ndim == 1 and u.shape == (self.n_particles,)) or (
+                    u.ndim == 2 and u.shape == (self.n_particles, y.shape[1]))
 
             u_alpha = self._alphath_closest(u=u, y_t=y[t])
-            # assert isinstance(u_alpha, (float, int))
+            assert (y.ndim == 1 and isinstance(u_alpha, numbers.Number)) or (
+                    y.ndim == 2 and u_alpha.shape == (y.shape[1],))
+            self._tune_kernel_scales(u_alpha=u_alpha, y_t=y[t])
 
-            self.kernel.tune_scale(u=u_alpha, y=y[t])
+            lw = self._evaluate_kernel(u=u, y_t=y[t])
+            assert lw.ndim == 1 and lw.shape == (self.n_particles,)
+            loglik += logsumexp(lw)
 
-            lw = self.kernel(u=u, y=y[t])
-            w = np.exp(lw)
-            assert w.ndim == 1 and w.shape == (self.n_particles,)
-
-            if np.max(w) < 1e-20:
-                warnings.warn('Weight underflow.', RuntimeWarning)
-                return -1e99
-
-            log_mean = math.log(np.mean(w))
-            assert log_mean <= 0.0
-
-            loglik += log_mean
-
-            rows = self.random_state.choice(a=self.n_particles, size=self.n_particles, replace=True, p=w / np.sum(w))
+            rows = self.random_state.choice(self.n_particles, self.n_particles, replace=True, p=softmax(lw))
             x = x[rows]
 
+        loglik -= T * math.log(self.n_particles)
         assert loglik <= 0.0
         return loglik
 
-    def _alphath_closest(self, u: np.ndarray, y_t: float) -> float:
-        # FIXME: This assumes 1D y and u.
-        distances_squared = np.power(y_t - u, 2)
-
+    def _alphath_closest(self, u: np.ndarray, y_t: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
         # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
-        alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1, axis=-1)[
-            self.n_particles_covered - 1]
-
-        return u[alphath_closest_idx]
-
-    @abc.abstractmethod
-    def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
-        pass
-
-    @abc.abstractmethod
-    def _measurement_model(self, x: np.ndarray, theta: np.ndarray) -> np.array:
-        pass
-
-    """
-    def _log_likelihood_estimate(self, y: np.ndarray, theta: np.ndarray) -> float:
-        T = y.shape[0]
-        x = self.state_init
-        assert len(x.shape) == 2 and x.shape[0] == self.n_particles
-
-        log_w = np.empty(shape=(T + 1, self.n_particles), dtype=float)
-        log_w[0] = -math.log(self.n_particles)
-
-        for t in range(1, T + 1):
-            w = np.exp(log_w[t - 1])
-            w /= np.sum(w)
-
-            indices = self.random_state.choice(self.n_particles, size=self.n_particles, replace=True, p=w)
-            x = self._transition(x=x[indices], t=t, theta=theta)
-            u = self._measurement_model(x=x, theta=theta)
-
-            u_alpha = self._alphath_closest(u=u, y=y[t - 1])
-            self.kernel.tune_scale(y=y[t - 1], u=u_alpha)
-
-            log_w[t] = self.kernel(u=u, y=y[t - 1])
-
-        out = np.sum(logsumexp(log_w[1:], axis=1)) - T * math.log(self.n_particles)
-
-        # Underflow check.
-        if out < -20:
-            return -1500
+        if isinstance(self.kernel, Kernel):
+            # Univariate observations -> single kernel.
+            dists = np.abs(u - y_t)
+            alphath_closest_idx = np.argpartition(dists, kth=self.n_particles_covered - 1, axis=-1)[
+                self.n_particles_covered - 1]
+            return u[alphath_closest_idx]
         else:
-            return out
+            # Multivariate observations -> one kernel per y-dimension.
+            dists = np.abs(u - y_t[np.newaxis, :])
+            alphath_closest_idx = np.argpartition(dists, kth=self.n_particles_covered - 1, axis=0)[
+                self.n_particles_covered - 1]
 
-    def _alphath_closest(self, u: np.ndarray, y: float) -> float:
-        # FIXME: This assumes 1D y and u.
-        distances_squared = np.power(y - u, 2)
+            y_dim = y_t.shape[0]
+            assert alphath_closest_idx.shape == (y_dim,)
+            return u[alphath_closest_idx, np.arange(y_dim)]
 
-        # Alpha denotes the number of pseudo-measurements covered by the p-HPR of the kernel. However,
-        # indexing is 0-based, so we subtract 1 to get the alphath closest pseudo-measurement to y.
-        alphath_closest_idx = np.argpartition(distances_squared, kth=self.n_particles_covered - 1, axis=-1)[
-            self.n_particles_covered - 1]
+    def _tune_kernel_scales(self, u_alpha, y_t):
+        if isinstance(self.kernel, Kernel):
+            # Univariate observations -> single kernel.
+            self.kernel.tune_scale(u=u_alpha, y=y_t)
+        else:
+            # Multivariate observations -> one kernel per y-dimension.
+            for i, kernel in enumerate(self.kernel):
+                kernel.tune_scale(u=u_alpha[i], y=y_t[i])
 
-        return u[alphath_closest_idx]
+    def _evaluate_kernel(self, u, y_t):
+        if isinstance(self.kernel, Kernel):
+            # Univariate observations -> single kernel.
+            return self.kernel(u=u, y=y_t)
+        else:
+            # Multivariate observations -> one kernel per y-dimension. Assume independent y-dimensions.
+            lws = np.array([kernel(u=u[:, i], y=y_t[i]) for i, kernel in enumerate(self.kernel)])
+            return np.sum(lws, axis=0)
 
     @abc.abstractmethod
     def _transition(self, x: np.ndarray, t: int, theta: np.ndarray) -> np.ndarray:
@@ -482,4 +449,3 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
     @abc.abstractmethod
     def _measurement_model(self, x: np.ndarray, theta: np.ndarray) -> np.array:
         pass
-    """
