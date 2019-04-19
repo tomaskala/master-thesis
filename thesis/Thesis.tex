@@ -1,4 +1,4 @@
-\documentclass[twoside]{report}
+\documentclass[twoside,openright]{report}
 
 \usepackage[czech,english]{babel}
 \usepackage[utf8]{inputenc}
@@ -112,6 +112,7 @@
 \myTitle
 \end{titlepage}
 
+\cleardoublepage
 \pagenumbering{roman}
 
 % Assignment
@@ -138,7 +139,9 @@
 \listoftables
 
 % Chapters
+\cleardoublepage
 \pagenumbering{arabic}
+
 \input{tex/chapters/introduction}
 \input{tex/chapters/related_work}
 \input{tex/chapters/inference}
