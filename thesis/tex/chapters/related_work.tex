@@ -1,7 +1,7 @@
 \chapter{Related work}
 \label{chap:related-work}
 
-In this chapter, we provide a survey of literature relevant to our task. Addressed will be works on the use of Markov Chain Monte Carlo methods for approximate inference, works on approximating the likelihood of state-space models by the particle filter, and on Approximate Bayesian Computation (ABC) methods. We also provide a section describing the use of the considered models in bioinformatics, focusing on molecular biology and genetics.
+In this chapter, we provide a survey of literature relevant to our task. Addressed will be works on the use of Markov Chain Monte Carlo methods for approximate inference, works on approximating the likelihood of state-space models by the particle filter, and on Approximate Bayesian Computation methods. We also provide a section describing the use of the considered models in bioinformatics, focusing on molecular biology and genetics.
 
 \section{Markov Chain Monte Carlo methods}
 Markov Chain Monte Carlo (MCMC) can be summarized as algorithms designed to simulate random samples from a distribution of interest, which itself is too complicated to sample directly. Assuming the probability density function of this distribution can be evaluated (at least to a multiplicative constant), MCMC methods work by designing a Markov chain whose stationary distribution is the target one.
@@ -22,6 +22,13 @@ In recent years, though, the particle filter \citep{particle-filter} has become 
 On the other hand, if some of the unknown parameters are static, the task becomes more complex. Simply applying MCMC algorithms or other approximations is not possible, as the likelihood function, which is a part of the Metropolis-Hastings algorithm, cannot be evaluated. The paper \cite{andrieu} introduced the idea of using the particle filter to obtain an estimate of the likelihood, which has been shown in \cite{del-moral} to preserve the stationary distribution of the underlying Markov chain. The resulting algorithm is called \emph{Marginal Metropolis-Hastings}. A more recent overview can be found in the tutorial by \cite{schoen}.
 
 \section{Approximate Bayesian Computation}
+In its original formulation, the method of Approximate Bayesian Computation (ABC) provides a way to approximate the posterior distribution $p(\theta \mid y) \propto f(y \mid \theta) p(\theta)$, assuming that the prior $p(\cdot)$ is fully known, and that the likelihood $f(\cdot \mid \theta)$ can be sampled from, but not evaluated \citep{abc-old-old, abc-old}. A more recent overview of ABC methods can be found in \cite{abc-recent}.
+
+Briefly, the ABC method works by simulating a sample $\hat{\theta}$ from the prior, substituting it to the likelihood, and generating pseudo-observations $\hat{y}$. These are then compared to the real observations $y$, and if they are ``similar enough'', the sample $\hat{\theta}$ is accepted. Otherwise, it is rejected. The posterior distribution of $\theta$ is then given in terms of these random samples $\hat{\theta}$. This variant is referred to as the accept-reject ABC, for obvious reasons.
+
+In this thesis, we apply the ABC method in place of the particle filter to allow for inference about the static parameter $\theta$ when the likelihood is not available. In addition, the use of ABC allows for a possibly misspecified observation model of the SSM, which is often the case, as one may not possess the necessary domain knowledge or computational power needed for the real model. Such a situation has been considered in \cite{jasra-time-series}, although only through the use of the accept-reject variant given above.
+
+Since accepting a sufficient number of samples may take a long time, an idea is to measure the distance between the true and pseudo-observations through a kernel function. This formulation would not reject any samples --- instead, they would get assigned a lower weight. This is considered for instance in \cite{dedecius}, along with a proposed way to automatically tune the kernel width. How to exactly apply the ABC method to our problem will be addressed in \autoref{chap:abc} in detail.
 
 \section{Applications to molecular biology}
 There are some.
