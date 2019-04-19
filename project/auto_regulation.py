@@ -99,7 +99,6 @@ def simulate_xy(path: str, T: int, theta: np.ndarray, const: Dict[str, float], r
 
         x = np.array(x)
         y = np.array(y)
-        y = y[:, np.newaxis]
         time = np.array(time)
         assert x.shape[0] == time.shape[0] == y.shape[0] + 1
 
@@ -117,8 +116,8 @@ def main():
     if not os.path.exists(path):
         os.makedirs(path)
 
-    n_samples = 2000
-    n_particles = 100
+    n_samples = 10000
+    n_particles = 200
     thinning = 10
 
     state_init = np.array([8, 8, 8, 5])
@@ -148,18 +147,18 @@ def main():
     ])
 
     proposal = Proposal([
-        Distribution(stats.norm, scale=0.8),
-        Distribution(stats.norm, scale=0.8),
-        Distribution(stats.norm, scale=0.8),
-        Distribution(stats.norm, scale=0.8),
-        Distribution(stats.norm, scale=0.8),
-        Distribution(stats.norm, scale=0.8)
+        Distribution(stats.norm, scale=0.08),
+        Distribution(stats.norm, scale=0.08),
+        Distribution(stats.norm, scale=0.08),
+        Distribution(stats.norm, scale=0.08),
+        Distribution(stats.norm, scale=0.08),
+        Distribution(stats.norm, scale=0.08)
     ])
 
     theta_init = np.log(np.array([0.1, 0.7, 0.35, 0.2, 0.3, 0.1]))
     random_state = check_random_state(1)
 
-    t, x, y = simulate_xy(os.path.join(path, 'simulated_data.pickle'), T=10, theta=theta_init,
+    t, x, y = simulate_xy(os.path.join(path, 'simulated_data.pickle'), T=15, theta=theta_init,
                           const=const, random_state=random_state)
     const['times'] = t
 
@@ -209,7 +208,7 @@ def main():
     theta = np.exp(theta)
     theta = theta[::thinning]
     truth = np.exp(theta_init)
-    pretty_names = [r'$c_1$', r'$c_2$', r'$c_3', r'$c_4$', r'$c_7$', r'$c_8']
+    pretty_names = [r'$c_1$', r'$c_2$', r'$c_3$', r'$c_4$', r'$c_7$', r'$c_8']
 
     for i in range(theta.shape[1]):
         param_name = pretty_names[i]
