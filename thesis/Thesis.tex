@@ -99,7 +99,7 @@
     Faculty of Electrical Engineering\\
     Czech Technical University in Prague\\[\baselineskip]
     
-    \endgroup\clearpage}
+    \endgroup\cleardoublepage}
 
 
 %% Document %%
@@ -112,8 +112,8 @@
 \myTitle
 \end{titlepage}
 
-\cleardoublepage
-\pagenumbering{roman}
+%\cleardoublepage
+%\pagenumbering{roman}
 
 % Assignment
 \shorthandoff{-}  % Czech babel makes trouble here.
@@ -121,10 +121,12 @@
 
 % Abstract
 \selectlanguage{english}
+\cleardoublepage
 \begin{abstract}
     Abstract in English
 \end{abstract}
 \selectlanguage{czech}
+\cleardoublepage
 \begin{abstract}
     Abstract in Czech
 \end{abstract}
@@ -135,12 +137,10 @@
 
 % Table of contents
 \tableofcontents
-\listoffigures
-\listoftables
 
 % Chapters
-\cleardoublepage
-\pagenumbering{arabic}
+%\cleardoublepage
+%\pagenumbering{arabic}
 
 \input{tex/chapters/introduction}
 \input{tex/chapters/related_work}
