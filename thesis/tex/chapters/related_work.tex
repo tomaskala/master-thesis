@@ -1,2 +1,27 @@
 \chapter{Related work}
 \label{chap:related-work}
+
+In this chapter, we provide a survey of literature relevant to our task. Addressed will be works on the use of Markov Chain Monte Carlo methods for approximate inference, works on approximating the likelihood of state-space models by the particle filter, and on Approximate Bayesian Computation (ABC) methods. We also provide a section describing the use of the considered models in bioinformatics, focusing on molecular biology and genetics.
+
+\section{Markov Chain Monte Carlo methods}
+Markov Chain Monte Carlo (MCMC) can be summarized as algorithms designed to simulate random samples from a distribution of interest, which itself is too complicated to sample directly. Assuming the probability density function of this distribution can be evaluated (at least to a multiplicative constant), MCMC methods work by designing a Markov chain whose stationary distribution is the target one.
+
+An attractive property is that the transition distribution of such chain need not resemble the target distribution even closely, and that the problem is relatively unaffected by the dimensionality of the distribution. The downside is a difficulty to determine convergence --- for how long should a chain be ran in order to approximately reach this stationary distribution. In addition, one typically requires independent samples from the target distribution, which, however, the Markov chain samples are \emph{not}. Typically, one needs to ``thin'' the Markov chain samples by keeping every $n$th one to ensure their approximate independence.
+
+Perhaps the best known MCMC algorithm is the Metropolis algorithm \citep{metropolis}, later improved by \cite{hastings}. Random samples are iteratively generated from the Markov chain transition distribution, called the proposal distribution in this context. Each such sample is then compared with the previous one, and accepted with a certain probability which ensures that the stationary distribution is indeed the target. The go-to reference for Monte Carlo methods is \cite{robert-casella}. A particularly appealing treatment of MCMC methods with applications towards physics and machine learning can be found in \cite{information-theory}.
+
+\section{Parameter inference in state-space models}
+Assuming that the state-space model (SSM) takes the form informally stated in \autoref{chap:introduction} and more formally given in \autoref{chap:inference}, if all the parameters of interest are changing in time, that is, the inference is about $x_t$ given $y_t$, one arrives at the task of filtering.
+
+If the transition distribution from state $x_t$ to state $x_{t+1}$ is linear in the states and corrupted by uncorrelated additive noise with mean 0, this task can be solved exactly by the Kalman filter \citep{kalman}. The resulting filter is then optimal with respect to the mean squared error. An especially nice overview of the Kalman filter connecting it with other linear statistical models is \cite{lds}.
+
+Once the state transition becomes non-linear, one can use various generalizations of the Kalman filter, such as the extended Kalman filter, which locally linearizes the transition distribution, or the unscented Kalman filter \citep{ukf}.
+
+In recent years, though, the particle filter \citep{particle-filter} has become the most popular alternative due to its particularly simple implementation, appealing asymptotic properties and the fact that it allows for the transition model to be arbitrarily non-linear. The algorithm uses a relatively small number of random samples to approximate the distribution of $x_t$ given $y_1, \ldots, y_t$ at any given time $t$. Since the particle filter is used later in \autoref{chap:inference}, we postpone a more detailed description there.
+
+On the other hand, if some of the unknown parameters are static, the task becomes more complex. Simply applying MCMC algorithms or other approximations is not possible, as the likelihood function, which is a part of the Metropolis-Hastings algorithm, cannot be evaluated. The paper \cite{andrieu} introduced the idea of using the particle filter to obtain an estimate of the likelihood, which has been shown in \cite{del-moral} to preserve the stationary distribution of the underlying Markov chain. The resulting algorithm is called \emph{Marginal Metropolis-Hastings}. A more recent overview can be found in the tutorial by \cite{schoen}.
+
+\section{Approximate Bayesian Computation}
+
+\section{Applications to molecular biology}
+There are some.
