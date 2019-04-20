@@ -32,3 +32,13 @@ Since accepting a sufficient number of samples may take a long time, an idea is 
 
 \section{Applications to molecular biology}
 Finally, we review works describing how the framework of SSMs and the parameter inference in those can be applied in the context of bioinformatics, focusing on problems of molecular biology and genetics.
+
+The go-to reference for stochastic modelling in biology is \cite{wilkinson-book}. It contains a broad overview of applications of various probabilistic models to examples from molecular biology and chemistry. Included is a description of the Gillespie algorithm \cite{gillespie1, gillespie2} used to simulate chemical reactions, which we will use in \autoref{chap:applications}.
+
+A recent application of SSMs to molecular biology can be found in \cite{wilkinson}, where the authors use the particle filter to approximate the unknown likelihoods of various biological models. We will implement these examples in \autoref{chap:applications} and compare them with the ABC approximation.
+
+The paper \cite{bio1} views biological networks such as gene regulatory networks or signalling pathways as SSMs, and estimates their parameters. The static parameters of the model are viewed as dynamic states which, however, do not change in time. The unscented Kalman filter is then applied to estimate these ``dynamic'' parameters. Such approach is simple, as it does not require the use of MCMC algorithms, but comes without the appealing asymptotical properties of MCMC inference.
+
+\cite{bio2}, \cite{bio3} and \cite{bio4} proceed in a similar fashion when estimating the parameters of various biochemical networks. The used models are only mildly non-linear, and so the extended Kalman filter is sufficient, again without any asymptotical guarantees of identifying the true parameters, however.
+
+An interesting approach to learning the structure of a gene regulatory network from a gene expression time series can be found in \cite{bio5}. First, the particle filter is applied to learn the hidden states of the network. Once these hidden states are known, the LASSO regression is applied to learn a sparse representation of the regulatory network, since each gene is assumed to interact only with a small number of other genes.

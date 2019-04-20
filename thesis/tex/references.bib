@@ -208,3 +208,105 @@
     abstract = {Summary Standard Bayesian algorithms used for online filtering of states of hidden Markov models from noisy measurements assume an accurate knowledge of the measurement model in the form of a conditional probability density function. However, this knowledge is often unreachable in practice, and the used models are more or less misspecified, or it is too complex, making the resulting models intractable. This paper focuses on these issues from the particle filtering perspective. It adopts the principles of the approximate Bayesian filtering, where the particle weights are based on the (dis)similarity of the true measurements and the pseudo-measurements obtained by plugging the state particles directly into the measurement equation. Specifically, a new robust method for online tuning of the weighting kernel is proposed. Copyright © 2016 John Wiley \& Sons, Ltd.},
     year = {2017}
 }
+
+@book{wilkinson-book,
+    title={Stochastic Modelling for Systems Biology, Second Edition},
+    author={Wilkinson, D.J.},
+    isbn={9781439837726},
+    lccn={2011039585},
+    series={Chapman \& Hall/CRC Mathematical and Computational Biology},
+    url={https://books.google.cz/books?id=G3BaHtBrW68C},
+    year={2011},
+    publisher={Taylor \& Francis}
+}
+
+@article{wilkinson,
+    author = {Golightly, Andrew and J Wilkinson, Darren},
+    year = {2011},
+    month = {12},
+    pages = {807-20},
+    title = {Bayesian parameter inference for stochastic biochemical network models using particle Markov chain Monte Carlo},
+    volume = {1},
+    journal = {Interface focus},
+    doi = {10.1098/rsfs.2011.0047}
+}
+
+@ARTICLE{gillespie1,
+    author = {{Gillespie}, D.~T.},
+    title = "{A General Method for Numerically Simulating the Stochastic Time Evolution of Coupled Chemical Reactions}",
+    journal = {Journal of Computational Physics},
+    year = 1976,
+    month = dec,
+    volume = 22,
+    pages = {403-434},
+    doi = {10.1016/0021-9991(76)90041-3},
+    adsurl = {http://adsabs.harvard.edu/abs/1976JCoPh..22..403G},
+    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@article{gillespie2,
+    author = {Gillespie, Daniel T.},
+    title = {Exact stochastic simulation of coupled chemical reactions},
+    journal = {The Journal of Physical Chemistry},
+    volume = {81},
+    number = {25},
+    pages = {2340-2361},
+    year = {1977},
+    doi = {10.1021/j100540a008},
+    URL = {https://doi.org/10.1021/j100540a008},
+    eprint = {https://doi.org/10.1021/j100540a008}
+}
+
+@article{bio1,
+    author = {d'Alché-Buc, Florence and Quach, Minh and Brunel, Nicolas},
+    title = "{Estimating parameters and hidden variables in non-linear state-space models based on ODEs for biological networks inference}",
+    journal = {Bioinformatics},
+    volume = {23},
+    number = {23},
+    pages = {3209-3216},
+    year = {2007},
+    month = {12},
+    abstract = "{Motivation: Statistical inference of biological networks such as gene regulatory networks, signaling pathways and metabolic networks can contribute to build a picture of complex interactions that take place in the cell. However, biological systems considered as dynamical, non-linear and generally partially observed processes may be difficult to estimate even if the structure of interactions is given.Results: Using the same approach as Sitz et al. proposed in another context, we derive non-linear state-space models from ODEs describing biological networks. In this framework, we apply Unscented Kalman Filtering (UKF) to the estimation of both parameters and hidden variables of non-linear state-space models. We instantiate the method on a transcriptional regulatory model based on Hill kinetics and a signaling pathway model based on mass action kinetics. We successfully use synthetic data and experimental data to test our approach.Conclusion: This approach covers a large set of biological networks models and gives rise to simple and fast estimation algorithms. Moreover, the Bayesian tool used here directly provides uncertainty estimates on parameters and hidden states. Let us also emphasize that it can be coupled with structure inference methods used in Graphical Probabilistic Models.Availability: Matlab code available on demand.Contact:florence.dalche@ibisc.univ-evry.frSupplementary information: Supplementary data are available from http://amisbio.ibisc.fr/dm}",
+    issn = {1367-4803},
+    doi = {10.1093/bioinformatics/btm510},
+    url = {https://doi.org/10.1093/bioinformatics/btm510},
+    eprint = {http://oup.prod.sis.lan/bioinformatics/article-pdf/23/23/3209/823230/btm510.pdf},
+}
+
+@article{bio2,
+    author = {Wang, Zidong and Liu, Xiaohui and Liu, Yurong and Liang, Jinling and Vinciotti, Veronica},
+    year = {2009},
+    month = {07},
+    pages = {410-9},
+    title = {An Extended Kalman Filtering Approach to Modeling Nonlinear Dynamic Gene Regulatory Networks via Short Gene Expression Time Series},
+    volume = {6},
+    journal = {IEEE/ACM transactions on computational biology and bioinformatics / IEEE, ACM},
+    doi = {10.1109/TCBB.2009.5}
+}
+
+@article{bio3,
+    title={Extended Kalman Filter for Estimation of Parameters in Nonlinear State-Space Models of Biochemical Networks},
+    author={Xiaodian Sun and Li Xin Jin and Momiao Xiong},
+    journal={PLoS ONE},
+    year={2008},
+    volume={3},
+    pages={1220 - 4}
+}
+
+@article{bio4,
+    title={Inference of Nonlinear State-Space Models for Sandwich-Type Lateral Flow Immunoassay Using Extended Kalman Filtering},
+    author={Nianyin Zeng and Zidong Wang and Yurong Li and Min Du and Xiaohui Liu},
+    journal={IEEE Transactions on Biomedical Engineering},
+    year={2011},
+    volume={58},
+    pages={1959-1966}
+}
+
+@article{bio5,
+    title={Inferring Gene Regulatory Networks via Nonlinear State-Space Models and Exploiting Sparsity},
+    author={Amina Noor and Erchin Serpedin and Mohamed N. Nounou and Hazem N. Nounou},
+    journal={IEEE/ACM Transactions on Computational Biology and Bioinformatics},
+    year={2012},
+    volume={9},
+    pages={1203-1211}
+}
