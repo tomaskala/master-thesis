@@ -3,6 +3,10 @@
 
 This chapter describes the state-space model (SSM) formulation we are working with. In \autoref{sec:ssm-definition}, we state our assumptions about the individual probability distributions. Then in \autoref{sec:parameter-inference}, we calculate the posterior distribution of the parameters of interest, and show that straightforward inference is not possible. Further on, we derive a sampler to approximate this distribution. By itself, this sampler is unusable, as it requires the evaluation of the model likelihood. To circumvent this, we introduce the particle filter in \autoref{sec:particle-filter}. This section gives the definition and some of the properties of the filter. Later in \autoref{sec:particle-filter-estimate} we show how to use the particle filter to estimate the likelihood, and argue that it does not affect the asymptotic properties of the sampler.
 
+Most of this chapter is based on \cite{andrieu} and \cite{schoen}.
+
+
+
 \section{State-Space Model definition} \label{sec:ssm-definition}
 The state-space model, often also called the hidden Markov model (HMM) assumes a sequence of latent states $\left\{\bx_t\right\}_{t=0}^\infty \subseteq \R^{d_x}$ following a Markov chain, and a sequence of observed variables $\left\{\by_t\right\}_{t=1}^\infty \subseteq \R^{d_y}$. All involved distributions are parameterized by an unknown static parameter $\btheta \in \Theta \subset \R^d$.
 
@@ -15,11 +19,11 @@ p(\bx_{0:T}, \by_{1:T} \mid \btheta) = \sprior(\bx_0 \mid \btheta) \prod_{t = 1}
 where $\sprior$ is the prior distribution over the initial state, $\trans_t$ is the transition distribution at time $t$ and $\obs_t$ is the observation model at time $t$.
 
 The factorization \eqref{eq:factorization} can be written more clearly as
-\begin{align}
+\begin{align*}
 \bx_0 \mid \btheta & \sim \sprior(\cdot \mid \btheta), \\
 \bx_t \mid \bx_{t-1}, \btheta & \sim \trans_t(\cdot \mid \bx_{t-1}, \btheta), \quad t = 1, \ldots, T, \\
 \by_t \mid \bx_t, \btheta & \sim \obs_t(\cdot \mid \bx_t, \btheta), \quad t = 1, \ldots, T.
-\end{align}
+\end{align*}
 
 Finally, in accordance with the Bayesian approach \citep{bayes}, we introduce a prior distribution $\pprior$ over the unknown parameters $\btheta$ quantifying our knowledge about $\btheta$ before observing any data. This allows us to state the full joint distribution
 \begin{equation}\label{eq:full-joint}
@@ -75,8 +79,93 @@ The corresponding graphical model is depicted in \autoref{fig:graphical-model}.
     \label{fig:graphical-model}
 \end{figure}
 
+
+
 \section{Parameter inference} \label{sec:parameter-inference}
+Given an observed sequence $\by_{1:T}$, Bayesian inference relies on the joint posterior density
+\begin{equation}\label{eq:joint-posterior}
+p(\btheta, \bx_{0:T} \mid \by_{1:T}) = \underbrace{p(\bx_{0:T} \mid \btheta, \by_{1:T})}_{\text{State inference}} \underbrace{p(\btheta \mid \by_{1:T})}_{\text{Parameter inference}}.
+\end{equation}
+Our primary interest is to perform inference about the static parameter $\btheta$. From \eqref{eq:joint-posterior}, it is clear that to infer about the hidden states $\bx_{0:T}$, one needs knowledge about $\btheta$, so even if the hidden states are of interest, inference about $\btheta$ is necessary. \autoref{sec:particle-filter-estimate} actually shows how to estimate $\bx_{0:T}$ as a by-product.
+
+
+\paragraph{Bayesian inference}
+
+To perform Bayesian inference about $\btheta$, it is helpful to apply Bayes' theorem on $p(\btheta \mid \by_{1:T})$ to get
+\begin{equation*}
+p(\btheta \mid \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) \pprior(\btheta)}{\int p(\by_{1:T} \mid \btheta) \pprior(\btheta) \dx{\btheta}}.
+\end{equation*}
+
+Evaluating the likelihood $p(\by_{1:T} \mid \btheta)$ requires marginalizing over $\bx_{0:T}$:
+\begin{equation*}
+p(\by_{1:T} \mid \btheta) = \int p(\bx_{0:T}, \by_{1:T} \mid \btheta) \dx{\bx_{0:T}},
+\end{equation*}
+where $p(\bx_{0:T}, \by_{1:T} \mid \btheta)$ is given in \eqref{eq:factorization}. Unless the SSM is linear and Gaussian, such $((T+1) \times d_x)$-dimensional integral is intractable \citep{andrieu}.
+
+
+\paragraph{Inference under tractable likelihood assumption}
+
+For the time being, we proceed as if the likelihood was tractable. We derive a sampler for $\btheta$ and note which component cannot be evaluated due to the likelihood being present. \autoref{sec:particle-filter-estimate} then describes the necessary changes to allow circumventing the likelihood evaluation.
+
+Often, the interest is not in the posterior $p(\btheta \mid \by_{1:T})$ itself, but on the expectation of some function $\phi$ w.r.t. this distribution, i.e. on
+\begin{equation} \label{eq:posterior-integral}
+\E_{p(\btheta \mid \by_{1:T})}[\phi(\btheta)] = \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \dx{\btheta}.
+\end{equation}
+We use the Metropolis-Hastings algorithm \citep{metropolis, hastings} to obtain $M$ samples from $p(\btheta \mid \by_{1:T})$, denoted as $\btheta^{(m)},\ m = 1, \ldots, M$. The integral \eqref{eq:posterior-integral} is then approximated as the arithmetic mean
+\begin{equation*}
+\frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}).
+\end{equation*}
+An appealing property of the Metropolis-Hastings algorithm is that such arithmetic mean converges to \eqref{eq:posterior-integral} almost surely \citep{robert-casella}, i.e.
+\begin{equation*}
+\frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}) \xrightarrow{a.s} \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \dx{\btheta},
+\end{equation*}
+where $\xrightarrow{a.s.}$ denotes almost sure convergence.
+
+Finally, we note that if one is indeed interested in the distribution $p(\btheta \mid \by_{1:T})$ itself, it can be recovered by the empirical distribution
+\begin{equation*}
+\hat{p}(\btheta \mid \by_{1:T}) = \frac{1}{M} \sum_{m=1}^M \delta_{\btheta^{(m)}}(\btheta),
+\end{equation*}
+where $\delta$ denotes the Dirac distribution. This estimate can be additionally smoothed using kernel methods \citep{kernel-smoothing}.
+
+
+\paragraph{Metropolis-Hastings algorithm}
+The Metropolis-Hastings algorithm is described in \autoref{alg:metropolis-hastings}. Although well-known, it is included for comparison with the variant introduced in \autoref{sec:particle-filter-estimate}.
+
+The target distribution is the parameter posterior $p(\btheta \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pprior(\btheta)$. In this case, it is not necessary to evaluate the normalizing constant, since it gets cancelled out.
+
+The algorithm further requires a proposal distribution $\prop$. Similarly to the prior $\pprior$, it is problem-dependent, and must be selected carefully.
+
+\begin{algorithm}[ht]
+    \caption{Metropolis-Hastings}
+    \label{alg:metropolis-hastings}
+    \begin{algorithmic}[1]
+        \Input $\text{Number of samples } M,\ \left\{\by_1, \ldots, \by_T\right\}$
+        
+        \State $\text{Initialize } \btheta^{(0)}.$
+        
+        \For{$m = 1\ \mathbf{to}\ M$}
+            \State $\text{Sample } \btheta^\prime \sim \prop(\cdot \mid \btheta^{(m-1)}).$
+            \State $\text{Calculate the aceptance probability } $ \begin{equation} \label{eq:acceptance-probability}
+            \alpha = \min \left\{1, \frac{p(\by_{1:T} \mid \btheta^\prime) \pprior(\btheta^\prime)}{p(\by_{1:T} \mid \btheta^{(m-1)}) \pprior(\btheta^{(m-1)})} \frac{\prop(\btheta^{(m-1)} \mid \btheta^\prime)}{\prop(\btheta^\prime \mid \btheta^{(m-1)})} \right\}.
+            \end{equation}
+            \State $\text{Sample } u \sim \mathcal{U}(0,1).$
+            \If {$u \leq \alpha$}
+                \State $\btheta^{(m)} \gets \btheta^\prime$ \Comment{With probability $\alpha$, accept the proposed sample.}
+            \Else
+                \State $\btheta^{(m)} \gets \btheta^{(m-1)}$ \Comment{With probability $1 - \alpha$, reject the proposed sample.}
+            \EndIf
+        \EndFor
+        
+        \Output $\left\{ \btheta^{(1)}, \ldots, \btheta^{(M)} \right\}$
+    \end{algorithmic}
+\end{algorithm}
+
+We see that the acceptance probability \eqref{eq:acceptance-probability} cannot be calculated, as it depends on the intractable likelihood $p(\by_{1:T} \mid \btheta)$. In \autoref{sec:particle-filter-estimate}, we give a modified variant of the Metropolis-Hastings algorithm, where the likelihood is approximated using the particle filter. The derivation of this filter is the content of the next section.
+
+
 
 \section{The particle filter} \label{sec:particle-filter}
 
-\section{Using the particle filter to estimate likelihood} \label{sec:particle-filter-estimate}
+
+
+\section{Using the particle filter to estimate the likelihood} \label{sec:particle-filter-estimate}

@@ -40,6 +40,8 @@
   \renewcommand{\subsectionautorefname}{Subsection}%
 }
 
+% Make autoref work for the algorithm environment.
+\newcommand{\algorithmautorefname}{Algorithm}
 
 %% Definitions %%
 
@@ -60,6 +62,7 @@
 
 \newcommand{\R}{\mathbb{R}}  % Pretty set of real numbers.
 \newcommand{\N}{\mathbb{N}}  % Pretty set of natural numbers.
+\newcommand{\E}{\mathbb{E}}  % Pretty expectation.
 \DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}  % The ceiling function.
 \DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}  % The floor function.
 
@@ -78,7 +81,8 @@
 \newcommand{\obs}{g}
 \newcommand{\sprior}{p}
 \newcommand{\pprior}{\pi}
-
+\newcommand{\prop}{q}
+\newcommand{\dx}[1]{\mathrm{d}{#1}}
 
 
 %% Title %%
