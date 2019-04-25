@@ -100,7 +100,7 @@ Evaluating the likelihood $p(\by_{1:T} \mid \btheta)$ requires marginalizing ove
 \begin{equation*}
 p(\by_{1:T} \mid \btheta) = \int p(\bx_{0:T}, \by_{1:T} \mid \btheta) \dx{\bx_{0:T}},
 \end{equation*}
-where $p(\bx_{0:T}, \by_{1:T} \mid \btheta)$ is given in \eqref{eq:factorization}. Unless the SSM is linear and Gaussian, such $((T+1) \times d_x)$-dimensional integral is intractable \citep{andrieu}.
+where $p(\bx_{0:T}, \by_{1:T} \mid \btheta)$ is given in \eqref{eq:factorization}. Unless the SSM is linear and Gaussian, such $d_x(T+1)$-dimensional integral is intractable \citep{andrieu}.
 
 
 \paragraph{Inference under tractable likelihood assumption}
