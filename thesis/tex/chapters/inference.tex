@@ -91,7 +91,7 @@ Our primary interest is to perform inference about the static parameter $\btheta
 
 \paragraph{Bayesian inference}
 
-To perform Bayesian inference about $\btheta$, it is helpful to apply Bayes' theorem on $p(\btheta \mid \by_{1:T})$ to get
+To perform Bayesian inference about $\btheta$, we express the posterior of $\btheta$ by applying Bayes' theorem on $p(\btheta \mid \by_{1:T})$:
 \begin{equation*}
 p(\btheta \mid \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) \pprior(\btheta)}{\int p(\by_{1:T} \mid \btheta) \pprior(\btheta) \dx{\btheta}}.
 \end{equation*}
@@ -165,6 +165,45 @@ We see that the acceptance probability \eqref{eq:acceptance-probability} cannot 
 
 
 \section{The particle filter} \label{sec:particle-filter}
+The particle filter \citep{particle-filter} is a method for approximating the filtering distribution $p(\bx_t \mid \by_{1:t})$ using a finite number of samples called particles. The algorithm is also known as sequential Monte Carlo or sequential importance sampling. The latter name sheds some light on how the method works, and it is exactly through importance sampling that the particle filter is derived.
+
+\paragraph{Importance sampling}
+Here we briefly review the basic idea behind importance sampling. For a more thorough treatment, the reader is referred to \cite{information-theory} or \cite{robert-casella}.
+
+Consider a situation where the expectation of some function $\phi$ w.r.t. the distribution with density $p$,
+\begin{equation} \label{eq:is-expectation}
+\Phi \coloneqq \E_{p}[\phi(\bm{X})] = \int \phi(\bm{x}) p(\bm{x}) \dx{\bm{x}},
+\end{equation}
+is of interest. Assume that the integral is analytically intractable, and that one cannot generate samples from $p$ to approximate this expectation. Assume further that the density $p$ can be evaluated, at least up to a multiplicative constant, i.e. that it takes the form
+\begin{equation*}
+p(\bm{x}) = \frac{p^*(\bm{x})}{Z},
+\end{equation*}
+where $Z$ is an unknown normalizing constant, and $p^*$ can be evaluated. Such situation frequently arises in Bayesian statistics, where a posterior distribution of interest $p(\btheta \mid \bm{x}) = \frac{p(\bm{x} \mid \btheta) p(\btheta)}{\int p(\bm{x} \mid \btheta) p(\btheta) \dx{\btheta}}$ is given in terms of the Bayes theorem. The normalizing constant in the denominator is often unavailable in analytic form. However, the numerator can be evaluated.
+
+Next, we introduce a (typically simpler) distribution with probability density $q(\bm{x}) = \frac{q^*(\bm{x})}{Z_Q}$ such that
+\begin{enumerate}
+    \item One can sample from $q$;
+    \item One can evaluate $q^*$;
+    \item $p(\bm{x}) > 0$ implies $q(\bm{x}) > 0$.
+\end{enumerate}
+The expectation \eqref{eq:is-expectation} can then be written as
+\begin{equation*}
+\Phi = \int \phi(\bm{x}) \frac{q(\bm{x})}{q(\bm{x})} p(\bm{x}) \dx{\bm{x}} = \int \phi(\bm{x}) \underbrace{\frac{p(\bm{x})}{q(\bm{x})}}_{w^*(\bm{x})} q(\bm{x}) \dx{\bm{x}} = \E_{q}[\phi(\bm{X}) w^*(\bm{X})],
+\end{equation*}
+where $w^*(\bm{x})$ are called the importance weights. By defining $w(\bm{x}) = \frac{p^*(\bm{x})}{q^*(\bm{x})}$, $\Phi$ can be approximated by
+\begin{equation*}
+\Phi \approx \widehat{\Phi} \coloneqq \frac{\sum_{i=1}^N \phi(\bm{x}^{(i)}) w(\bm{x}^{(i)})}{\sum_{i=1}^Nw(\bm{x}^{(i)})}, \quad \bm{x}^{(1)}, \ldots, \bm{x}^{(N)} \stackrel{iid}{\sim} q.
+\end{equation*}
+We note that by using $w$ instead of $w^*$ and normalizing by the weights sum instead of the sample size $N$, we bypass the evaluation of $Z$ and $Z_Q$, since they cancel out. The importance weights here account for correcting the discrepancy between the distribution $q$ and the true distribution $p$.
+
+The estimator $\widehat{\Phi}$ converges to the true expectation $\Phi$ as $N \to \infty$. However, it is not necessarily unbiased \citep{information-theory}.
+
+
+\paragraph{Sequential importance sampling}
+
+\paragraph{Resampling}
+
+\paragraph{The particle filter}
 
 
 
