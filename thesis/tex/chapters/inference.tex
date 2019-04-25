@@ -199,7 +199,23 @@ We note that by using $w$ instead of $w^*$ and normalizing by the weights sum in
 The estimator $\widehat{\Phi}$ converges to the true expectation $\Phi$ as $N \to \infty$. However, it is not necessarily unbiased \citep{information-theory}.
 
 
-\paragraph{Sequential importance sampling}
+\paragraph{Sequential importance sampling (SIS)}
+The SIS algorithm uses a weighted set of particles $\left\{\left(\bm{x}_t^{(i)}, w_t^{(i)} \right) : i = 1, \ldots, N \right\}$, to represent the filtering distribution $p(\bm{x}_t \mid \by_{1:t})$. To simplify notation, we write $w_t^{(i)}$ instead of $w_t(\bm{x}^{(i)})$ from now on. The empirical approximation to $p(\bm{x}_t \mid \by_{1:t})$ is then
+\begin{equation*}
+\hat{p}(\bm{x}_t \mid \by_{1:t}) = \frac{\sum_{i=1}^N w_t^{(i)} \delta_{\bm{x}_t^{(i)}}(\bm{x}_t)}{\sum_{i=1}^N w_t^{(i)}}.
+\end{equation*}
+
+As the name suggests, the algorithm involves a sequential application of the importance sampling procedure with increasing time $t$.
+
+Returning to the SSM \eqref{sec:ssm-definition}, we consider the posterior distribution of a sequence of states $\bx_{0:t}$ given a sequence of observations $\by_{1:t}$. By application of the Bayes theorem, we obtain the following recursive formula:
+\begin{equation*}
+\begin{split}
+p(\bx_{0:t} \mid \by_{1:t}) & \propto p(\by_t \mid \bx_{0:t}, \by_{1:t-1}) p(\bx_{0:t} \mid \by_{1:t-1}) \\
+&= \obs_t(\by_t \mid \bx_t) p(\bx_t \mid \bx_{0:t-1}, \by_{1:t-1}) p(\bx_{0:t-1} \mid \by_{1:t-1}) \\
+&= \obs_t(\by_t \mid \bx_t) \trans_t(\bx_t \mid \bx_{t-1}) p(\bx_{0:t-1} \mid \by_{1:t-1}),
+\end{split}
+\end{equation*}
+where the equalities follow from the hidden Markov model independence assumptions.
 
 \paragraph{Resampling}
 
