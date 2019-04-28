@@ -123,7 +123,7 @@ where $\xrightarrow{a.s.}$ denotes almost sure convergence.
 
 Finally, we note that if one is indeed interested in the distribution $p(\btheta \mid \by_{1:T})$ itself, it can be recovered by the empirical distribution
 \begin{equation*}
-\hat{p}(\btheta \mid \by_{1:T}) = \frac{1}{M} \sum_{m=1}^M \delta_{\btheta^{(m)}}(\btheta),
+\widehat{p}(\btheta \mid \by_{1:T}) = \frac{1}{M} \sum_{m=1}^M \delta_{\btheta^{(m)}}(\btheta),
 \end{equation*}
 where $\delta$ denotes the Dirac distribution. This estimate can be additionally smoothed using kernel methods \citep{kernel-smoothing}.
 
@@ -165,7 +165,7 @@ We see that the acceptance probability \eqref{eq:acceptance-probability} cannot 
 
 
 \section{The particle filter} \label{sec:particle-filter}
-The particle filter \citep{particle-filter} is a method for approximating the filtering distribution $p(\bx_t \mid \by_{1:t})$ using a finite number of samples called particles. The algorithm is also known as sequential Monte Carlo or sequential importance sampling. The latter name sheds some light on how the method works, and it is exactly through importance sampling that the particle filter is derived.
+The particle filter \citep{particle-filter} is a method for approximating the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$ using a finite number of samples called particles. The algorithm is also known as sequential Monte Carlo or sequential importance sampling. The latter name sheds some light on how the method works, and it is exactly through importance sampling that the particle filter is derived.
 
 \paragraph{Importance sampling}
 Here we briefly review the basic idea behind importance sampling. For a more thorough treatment, the reader is referred to \cite{information-theory} or \cite{robert-casella}.
@@ -200,9 +200,9 @@ The estimator $\widehat{\Phi}$ converges to the true expectation $\Phi$ as $N \t
 
 
 \paragraph{Sequential importance sampling (SIS)}
-The SIS algorithm uses a weighted set of particles $\left\{\left(\bm{x}_t^{(i)}, w_t^{(i)} \right) : i = 1, \ldots, N \right\}$, to represent the filtering distribution $p(\bm{x}_t \mid \by_{1:t})$. To simplify notation, we write $w_t^{(i)}$ instead of $w_t(\bm{x}^{(i)})$ from now on. The empirical approximation to $p(\bm{x}_t \mid \by_{1:t})$ is then
+The SIS algorithm uses a weighted set of particles $\left\{\left(\bm{x}_t^{(i)}, w_t^{(i)} \right) : i = 1, \ldots, N \right\}$, to represent the filtering distribution $p(\bm{x}_t \mid \by_{1:t}, \btheta)$. To simplify notation, we write $w_t^{(i)}$ instead of $w_t(\bm{x}^{(i)})$ from now on. The empirical approximation to $p(\bm{x}_t~\mid~\by_{1:t}, \btheta)$ is then
 \begin{equation*}
-\hat{p}(\bm{x}_t \mid \by_{1:t}) = \frac{\sum_{i=1}^N w_t^{(i)} \delta_{\bm{x}_t^{(i)}}(\bm{x}_t)}{\sum_{i=1}^N w_t^{(i)}}.
+\widehat{p}(\bm{x}_t \mid \by_{1:t}, \btheta) = \frac{\sum_{i=1}^N w_t^{(i)} \delta_{\bm{x}_t^{(i)}}(\bm{x}_t)}{\sum_{i=1}^N w_t^{(i)}}.
 \end{equation*}
 
 As the name suggests, the algorithm involves a sequential application of the importance sampling procedure with increasing time $t$.
@@ -215,7 +215,7 @@ p(\bx_{0:t} \mid \by_{1:t}) & \propto p(\by_t \mid \bx_{0:t}, \by_{1:t-1}) p(\bx
 &= \obs_t(\by_t \mid \bx_t) \trans_t(\bx_t \mid \bx_{t-1}) p(\bx_{0:t-1} \mid \by_{1:t-1}),
 \end{split}
 \end{equation*}
-where the equalities follow from the hidden Markov model independence assumptions.
+where the equalities follow from the hidden Markov model independence assumptions. For better clarity, we suppress the static parameter $\btheta$ from the conditioning.
 
 For the target $p(\bx_{0:t} \mid \by_{1:t})$, we introduce the importance sampling distribution $q(\bx_{0:t} \mid \by_{1:t})$ and sample $\bx_{0:t}^{(i)}$ from it. The importance weights are (up to normalization) given by
 \begin{equation} \label{eq:weight-recursion1}
@@ -249,8 +249,8 @@ The sequential importance sampling algorithm is summarized in \autoref{alg:sis}.
         \State $w_0^{(i)} \gets \frac{1}{N}, \quad i = 1, \ldots, N.$ \Comment{Initialize uniform weights.}
         
         \For{$t = 1\ \mathbf{to}\ T$}
-            \State $\text{Sample } \bx_t^{(i)} \sim q(\cdot \mid \bx_{0:t-1}^{(i)}, \by_{1:t}), \quad i = 1, \ldots, N.$ \Comment{Sample $N$ new particles.}
-            \State $w_t^{(i)} \propto \frac{\obs_t(\by_t \mid \bx_t^{(i)}) \trans_t(\bx_t^{(i)} \mid \bx_{t-1}^{(i)})}{q(\bx_t^{(i)} \mid \bx_{0:t-1}^{(i)}, \by_{1:t})} w_{t-1}^{(i)}$ \Comment{Update the importance weights as per \eqref{eq:weight-recursion2}.}
+            \State $\text{Sample } \bx_t^{(i)} \sim q(\cdot \mid \bx_{0:t-1}^{(i)}, \by_{1:t}, \btheta), \quad i = 1, \ldots, N.$ \Comment{Sample $N$ new particles.}
+            \State $\text{Set } w_t^{(i)} \propto \frac{\obs_t(\by_t \mid \bx_t^{(i)}, \btheta) \trans_t(\bx_t^{(i)} \mid \bx_{t-1}^{(i)}, \btheta)}{q(\bx_t^{(i)} \mid \bx_{0:t-1}^{(i)}, \by_{1:t}, \btheta)} w_{t-1}^{(i)}, \quad i = 1, \ldots, N.$ \Comment{Update the weights as per \eqref{eq:weight-recursion2}.}
         \EndFor
     \end{algorithmic}
 \end{algorithm}
@@ -269,7 +269,7 @@ To alleviate this, the following resampling step is introduced.
         
         \State $\widetilde{w}_t^{(i)} \gets \frac{w_t^{(i)}}{\sum_{j=1}^N w_t^{(j)}}, \quad i = 1, \ldots, N.$ \Comment{Normalize the weights.}
         
-        \State $\text{Sample } a_i \sim \text{Mult}_N \left(1, \left(\widetilde{w}_t^{(1)}, \ldots, \widetilde{w}_t^{(N)}\right) \right), \quad i = 1, \ldots, N.$ \Comment{Sample indices with replacement.}
+        \State $\text{Sample } a_i \text{ s.t. } \mathbb{P}(a_i = j) = \widetilde{w}_t^{(j)}, \quad i,j = 1, \ldots, N.$ \Comment{Sample indices with replacement.}
         
         \State $w_t^{(a_i)} \gets \frac{1}{N}, \quad i = 1, \ldots, N.$ \Comment{Reset weights.}
         
@@ -279,17 +279,51 @@ To alleviate this, the following resampling step is introduced.
 
 The normalized importance weights are interpreted as a probability vector of a categorical distribution. The particles are then resampled (sampled with replacement) according to this distribution. This effectively selects a population of ``strong individuals'' for the next time step.
 
-The above described procedure is known as the multinomial resampling. There are other, more complex, approaches, such as the stratified resampling \citep{resampling}. For our purposes, the multinomial resampling is sufficient.
+The above described procedure is known as multinomial resampling. There are other, more complex, approaches, such as stratified resampling \citep{resampling} which further reduce the variance of the weights, at the cost of added computational complexity.
 
 \paragraph{The particle filter}
 The remaining step is the choice of the importance sampling distribution $q$. Obviously, the more similar this distribution is to the target, the closer approximation we obtain.
 
-With the SSM model \eqref{eq:factorization}, it is actually possible to use the target distribution.
+The particle filter arises when the transition distribution $\trans_t$ is chosen as the importance distribution, that is, when
+\begin{equation*}
+q(\bx_t \mid \bx_{0:t-1}, \by_{1:t}, \btheta) = \trans_t(\bx_t \mid \bx_{t-1}, \btheta).
+\end{equation*}
+The importance weights \eqref{eq:weight-recursion2} then simplify into
+\begin{equation} \label{eq:weight-recursion3}
+w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t^{(i)}) w_{t-1}^{(i)}.
+\end{equation}
+This form of $q$ is not optimal (the target) distribution. It is however ``close'' to it. The optimal distribution would be $q(\bx_t \mid \bx_{0:t-1}, \by_{1:t}, \btheta) = p(\bx_t \mid \bx_{t-1}, \by_{t}, \btheta)$, due to factorization assumptions of the SSM \eqref{eq:factorization}. Calculating it would involve marginalization over $\bx_t$,
+\begin{equation*}
+p(\bx_t \mid \bx_{t-1}, \by_{t}, \btheta) = \frac{p(\bx_t, \by_{t} \mid \bx_{t-1}, \btheta)}{\int p(\bx_t, \by_{t} \mid \bx_{t-1}, \btheta) \dx{\bx_t}} = \frac{\trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta)}{\int \trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta) \dx{\bx_t}},
+\end{equation*}
+which is generally not possible.
 
-{\color{red} TODO}
-
-The resulting algorithm is then called the bootstrap particle filter, due to the resampling step effectively performing a non-parametric bootstrap {\color{red} TODO: Cite bootstrap?}.
+The particle filter is summarized in \autoref{alg:particle-filter}.
+\begin{algorithm}[ht]
+    \caption{Bootstrap particle filter}
+    \label{alg:particle-filter}
+    \begin{algorithmic}[1]
+        \Input $\text{Number of particles } N,\ \text{current parameter value } \btheta,\ \left\{\by_1, \ldots, \by_T\right\}$
+        
+        \State $\text{Sample } \bx_0^{(i)} \sim \sprior(\cdot \mid \btheta), \quad i = 1, \ldots, N.$ \Comment{Initialize $N$ particles.}
+        
+        \State $w_0^{(i)} \gets \frac{1}{N}, \quad i = 1, \ldots, N.$ \Comment{Initialize uniform weights.}
+        
+        \For{$t = 1\ \mathbf{to}\ T$}
+        \State $\text{Sample } \bx_t^{(i)} \sim \trans_t(\bx_t \mid \bx_{t-1}, \btheta), \quad i = 1, \ldots, N.$ \Comment{Sample $N$ new particles.}
+        
+        \State $\text{Set } w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t^{(i)}, \btheta) w_{t-1}^{(i)}, \quad i = 1, \ldots, N.$ \Comment{Update the weights as per \eqref{eq:weight-recursion3}.}
+        
+        \State $\text{Resample } \bx_t^{(i)} \text{ and reset } w_t^{(i)} \text{ using \autoref{alg:resampling}}, \quad i = 1, \ldots, N.$
+        \EndFor
+    \end{algorithmic}
+\end{algorithm}
+The algorithm is called \emph{bootstrap} particle filter, due to resemblance of the resampling step to the non-parametric bootstrap \citep{bootstrap}.
 
 
 
 \section{Using the particle filter to estimate the likelihood} \label{sec:particle-filter-estimate}
+
+As mentioned in \autoref{sec:particle-filter} is typically used to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$. However, we use it to provide a tractable approximation to the likelihood $p(\by_{1:T} \mid \btheta)$ such that it does not affect the limiting distribution of the Markov chain used in the Metropolis-Hastings algorithm. This section describes how it is done, and gives the resulting variant of the Metropolis-Hastings algorithm.
+
+Suppose that we are in possession of an estimator $\widehat{z}$ of the likelihood $p(\by_{1:T} \mid \btheta)$.
