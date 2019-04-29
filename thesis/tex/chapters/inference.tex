@@ -129,7 +129,7 @@ where $\delta$ denotes the Dirac distribution. This estimate can be additionally
 
 
 \paragraph{Metropolis-Hastings algorithm}
-The Metropolis-Hastings algorithm is described in \autoref{alg:metropolis-hastings}. Although well-known, it is included for comparison with the variant introduced in \autoref{sec:particle-filter-estimate}.
+The Metropolis-Hastings algorithm is described in \autoref{alg:metropolis-hastings}. Although well-known, it is included for comparison with the variant introduced in \autoref{alg:marginal-metropolis-hastings}.
 
 The target distribution is the parameter posterior $p(\btheta \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pprior(\btheta)$. In this case, it is not necessary to evaluate the normalizing constant, since it gets cancelled out.
 
@@ -324,20 +324,20 @@ The algorithm is called \emph{bootstrap} particle filter, due to resemblance of 
 
 \section{Using the particle filter to estimate the likelihood} \label{sec:particle-filter-estimate}
 
-As mentioned in \autoref{sec:particle-filter} is typically used to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$. However, we use it to provide a tractable approximation to the likelihood $p(\by_{1:T} \mid \btheta)$ such that it does not affect the limiting distribution of the Markov chain used in the Metropolis-Hastings algorithm. This section describes how it is done, and gives the resulting variant of the Metropolis-Hastings algorithm.
+As mentioned in \autoref{sec:particle-filter} is typically used to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$. This will be used to provide a tractable approximation to the likelihood $p(\by_{1:T} \mid \btheta)$ such that it does not affect the limiting distribution of the Markov chain used in the Metropolis-Hastings algorithm. This section describes how it is done, and gives the resulting variant of the Metropolis-Hastings algorithm.
 
 \paragraph{Likelihood estimate in general}
 Suppose that we are in possession of an estimator $\widehat{\aux}$ of the likelihood $p(\by_{1:T} \mid \btheta)$. As such, it necessarily depends on $\by_{1:T}$ and $\btheta$. Since we aim to use the particle filter to calculate $\widehat{\aux}$, the estimator also depends on the importance weights. This makes the estimator a random variable with some distribution denoted $\psi(\aux \mid \btheta, \by_{1:T})$. It is not necessary to have this distribution available, as it is later shown to cancel out in the Metropolis-Hastings acceptance ratio.
 
 We now return to our model \eqref{eq:posterior} and introduce $\widehat{\aux}$ as an auxiliary variable, along with our variable of interest $\btheta$. This changes the target distribution from $p(\btheta \mid \by_{1:T})$ to
 \begin{equation} \label{eq:psi-joint}
-\psi(\btheta, \aux \mid \by_{1:T}) = p(\btheta \mid \by_{1:T}) \psi(\aux \mid \btheta, \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) p(\btheta)}{p(\by_{1:T})} \psi(\aux \mid \btheta, \by_{1:T}).
+\psi(\btheta, \aux \mid \by_{1:T}) = p(\btheta \mid \by_{1:T}) \psi(\aux \mid \btheta, \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) \pprior(\btheta)}{p(\by_{1:T})} \psi(\aux \mid \btheta, \by_{1:T}).
 \end{equation}
 In theory, we could now construct a Metropolis-Hastings algorithm with $\psi(\btheta, \aux \mid \by_{1:T})$ as the target, instead of $p(\btheta \mid \by_{1:T})$ as was the case in \autoref{alg:metropolis-hastings}. However, this would not solve our problem, since calculating the acceptance ratio still requires the calculation of the likelihood $p(\by_{1:T} \mid \btheta)$, as \eqref{eq:psi-joint} makes clear.
 
 Instead, we define a new target distribution over $(\btheta, \widehat{\aux})$ by replacing the likelihood in \eqref{eq:psi-joint} by its estimate $\widehat{\aux}$:
 \begin{equation} \label{eq:aux-joint}
-\auxjoint(\btheta, \aux \mid \by_{1:T}) \coloneqq \frac{\aux p(\btheta)}{p(\by_{1:T})} \psi(\aux \mid \btheta, \by_{1:T}).
+\auxjoint(\btheta, \aux \mid \by_{1:T}) \coloneqq \frac{\aux \pprior(\btheta)}{p(\by_{1:T})} \psi(\aux \mid \btheta, \by_{1:T}).
 \end{equation}
 There are of course some conditions imposed on $\auxjoint(\btheta, \aux \mid \by_{1:T})$ for it to be useful:
 \begin{enumerate}
@@ -352,25 +352,84 @@ The first two conditions simply state that $\auxjoint$ is a valid probability di
     \item[2, 3.] Assume that $\widehat{\aux}$ is an unbiased estimate of $p(\by_{1:T} \mid \btheta)$, i.e. that $\E_{\psi}[\widehat{\aux}] = p(\by_{1:T} \mid \btheta)$. Consider now the marginal of $\auxjoint$ for $\btheta$:
     \begin{equation} \label{eq:marginal}
     \begin{split}
-    \int \auxjoint(\btheta, \aux \mid \by_{1:T})\; \dx{\aux} & = \frac{p(\btheta)}{p(\by_{1:T})} \int \aux \psi(\aux \mid \btheta, \by_{1:T}) \; \dx{\aux} \\
-    & = \frac{p(\btheta)}{p(\by_{1:T})} \E_{\psi}[\widehat{\aux}] \\
-    & = \frac{p(\btheta)}{p(\by_{1:T})} p(\by_{1:T} \mid \btheta) \\
+    \int \auxjoint(\btheta, \aux \mid \by_{1:T})\; \dx{\aux} & = \frac{\pprior(\btheta)}{p(\by_{1:T})} \int \aux \psi(\aux \mid \btheta, \by_{1:T}) \; \dx{\aux} \\
+    & = \frac{\pprior(\btheta)}{p(\by_{1:T})} \E_{\psi}[\widehat{\aux}] \\
+    & = \frac{\pprior(\btheta)}{p(\by_{1:T})} p(\by_{1:T} \mid \btheta) \\
     & = p(\btheta \mid \by_{1:T}),
     \end{split}
     \end{equation}
     the original target distribution. This satisfies condition 3. For condition 2, we simply integrate \eqref{eq:marginal} w.r.t. $\btheta$, which results in 1 due to $p(\btheta \mid \by_{1:T})$ being a valid probability distribution.
 \end{enumerate}
 
-\paragraph{Acceptance ration computation}
+\paragraph{Acceptance ratio computation}
 Given the new target distribution $\auxjoint$, we can now construct a Metropolis-Hastings algorithm on the joint space of $(\btheta, \aux)$. This means that the proposal density first samples $\btheta^\prime \sim q(\cdot \mid \btheta^{(m-1)})$, and then $\widehat{\aux}^\prime \sim \psi(\cdot \mid \btheta^\prime, \by_{1:T})$. The acceptance ratio can now be computed as
 \begin{equation*}
 \begin{split}
 \alpha & = \min \left\{1, \frac{\auxjoint(\btheta^\prime, \aux^\prime \mid \by_{1:T})}{\auxjoint(\btheta^{(m-1)}, \aux^{(m-1)} \mid \by_{1:T})} \frac{\prop(\btheta^{(m-1)} \mid \btheta^\prime) \psi(\aux^{(m-1)} \mid \btheta^{(m-1)}, \by_{1:T})}{\prop(\btheta^\prime \mid \btheta^{(m-1)}) \psi(\aux^\prime \mid \btheta^\prime, \by_{1:T})} \right\} \\
-& = \min \left\{1, \frac{\aux^\prime p(\btheta^\prime) \psi(\aux^\prime \mid \btheta^\prime, \by_{1:T})}{\aux^{(m-1)} p(\btheta^{(m-1)}) \psi(\aux^{(m-1)} \mid \btheta^{(m-1)}, \by_{1:T})} \frac{\prop(\btheta^{(m-1)} \mid \btheta^\prime) \psi(\aux^{(m-1)} \mid \btheta^{(m-1)}, \by_{1:T})}{\prop(\btheta^\prime \mid \btheta^{(m-1)}) \psi(\aux^\prime \mid \btheta^\prime, \by_{1:T})} \right\} \\
-& = \min \left\{1, \frac{\aux^\prime p(\btheta^\prime)}{\aux^{(m-1)} p(\btheta^{(m-1)})} \frac{q(\btheta^{(m-1)} \mid \btheta^\prime)}{q(\btheta^\prime \mid \btheta^{(m-1)})} \right\}.
+& = \min \left\{1, \frac{\aux^\prime \pprior(\btheta^\prime) \psi(\aux^\prime \mid \btheta^\prime, \by_{1:T})}{\aux^{(m-1)} \pprior(\btheta^{(m-1)}) \psi(\aux^{(m-1)} \mid \btheta^{(m-1)}, \by_{1:T})} \frac{\prop(\btheta^{(m-1)} \mid \btheta^\prime) \psi(\aux^{(m-1)} \mid \btheta^{(m-1)}, \by_{1:T})}{\prop(\btheta^\prime \mid \btheta^{(m-1)}) \psi(\aux^\prime \mid \btheta^\prime, \by_{1:T})} \right\} \\
+& = \min \left\{1, \frac{\aux^\prime \pprior(\btheta^\prime)}{\aux^{(m-1)} \pprior(\btheta^{(m-1)})} \frac{q(\btheta^{(m-1)} \mid \btheta^\prime)}{q(\btheta^\prime \mid \btheta^{(m-1)})} \right\}.
 \end{split}
 \end{equation*}
 
 Since \eqref{eq:marginal} shows that the marginal of $\auxjoint$ for $\btheta$ is the original target $p(\btheta \mid \by_{1:T})$, all we need to do is to discard the sampled $\widehat{\aux}^{(m)}$ and keep only $\btheta^{(m)}$ when running Metropolis-Hastings on the joint space of $(\btheta, \aux)$.
 
 \paragraph{Calculating the estimate using the particle filter}
+Finally, we describe how exactly is the particle filter used as an estimator of $p(\by_{1:T} \mid \btheta)$.
+
+First, we decompose the likelihood into a product of simpler distributions, which are then marginalized over the corresponding hidden state:
+\begin{equation} \label{eq:likelihood-factorization}
+\begin{split}
+p(\by_{1:T} \mid \btheta) &= \prod_{t=1}^T p(\by_t \mid \by_{1:t-1}, \btheta) \\
+&= \prod_{t=1}^T \int p(\by_t, \bx_t \mid \by_{1:t-1}, \btheta) \; \dx{\bx_t} \\
+&= \prod_{t=1}^T \int p(\by_t \mid \bx_t, \btheta) p(\bx_t \mid \by_{1:t-1}, \btheta) \; \dx{\bx_t}.
+\end{split}
+\end{equation}
+
+Using the particles $\left\{\bx_t^{(i)}\right\}_{i=1}^N$, we plug in the empirical approximation to $p(\bx_t \mid \by_{1:t-1}, \btheta)$, $\widehat{p}(\bx_t \mid \by_{1:t-1}, \btheta) = \frac{1}{N} \sum_{i=1}^N \delta_{\bm{x}_t^{(i)}}(\bx_t)$, into \eqref{eq:likelihood-factorization}, obtaining
+\begin{equation*}
+\begin{split}
+p(\by_{1:T} \mid \btheta) & \approx \prod_{t=1}^T \int p(\by_t \mid \bx_t, \btheta) \left[ \frac{1}{N} \sum_{i=1}^N \delta_{\bm{x}_t^{(i)}}(\bx_t) \right] \; \dx{\bx_t} \\
+& = \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N \int p(\by_t \mid \bx_t, \btheta) \delta_{\bm{x}_t^{(i)}}(\bx_t) \; \dx{\bx_t} \\
+& = \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N p(\by_t \mid \bx_t^{(i)}, \btheta)
+\end{split}
+\end{equation*}
+due to linearity of the integral and properties of the Dirac distribution.
+
+In $p(\by_t \mid \bx_t^{(i)}, \btheta)$, we recognize the particle filter weights $w_t^{(i)}$ defined in \eqref{eq:weight-recursion3}. This allows us to finally define the likelihood estimate as
+\begin{equation} \label{eq:likelihood-estimate}
+\widehat{\aux} \coloneqq \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N w_t^{(i)}.
+\end{equation}
+This estimator is obviously non-negative due to construction of the weights. The proof that it is also unbiased (and therefore also integrates to 1) is more involved, and the reader is referred to \cite{del-moral} for the original proof.
+
+Finally, we describe the resulting variant of the Metropolis-Hastings algorithm employing the likelihood estimate \eqref{eq:likelihood-estimate}.
+
+\begin{algorithm}[ht]
+    \caption{Marginal Metropolis-Hastings}
+    \label{alg:marginal-metropolis-hastings}
+    \begin{algorithmic}[1]
+        \Input $\text{Number of samples } M,\ \left\{\by_1, \ldots, \by_T\right\}$
+        
+        \State $\text{Initialize } \btheta^{(0)}.$
+        \State $\text{Run \autoref{alg:particle-filter} with } \btheta^{(0)} \text{ to obtain the weights } w_{0,t}^{(i)}, \quad t = 1, \ldots, T,\ i = 1, \ldots, N.$
+        \State $\text{Calculate } \widehat{\aux}^{(0)} \text{ according to \eqref{eq:likelihood-estimate} using } w_{0,t}^{(i)}.$
+        
+        \For{$m = 1\ \mathbf{to}\ M$}
+        \State $\text{Sample } \btheta^\prime \sim \prop(\cdot \mid \btheta^{(m-1)}).$
+        \State $\text{Run \autoref{alg:particle-filter} with } \btheta^\prime \text{ to obtain the weights } w_{m,t}^{(i)}, \quad t = 1, \ldots, T, \ i = 1, \ldots, N.$
+        \State $\text{Calculate } \widehat{\aux}^\prime \text{ according to \eqref{eq:likelihood-estimate} using } w_{m,t}^{(i)}.$
+        \State $\text{Calculate the aceptance probability } $ \begin{equation} \label{eq:acceptance-probability-tractable}
+        \alpha = \min \left\{1, \frac{\widehat{\aux}^\prime \pprior(\btheta^\prime)}{\widehat{\aux}^{(m-1)} \pprior(\btheta^{(m-1)})} \frac{\prop(\btheta^{(m-1)} \mid \btheta^\prime)}{\prop(\btheta^\prime \mid \btheta^{(m-1)})} \right\}.
+        \end{equation}
+        \State $\text{Sample } u \sim \mathcal{U}(0,1).$
+        \If {$u \leq \alpha$}
+        \State $\left( \btheta^{(m)}, \widehat{\aux}^{(m)} \right) \gets \left( \btheta^\prime, \widehat{\aux}^\prime \right)$ \Comment{With probability $\alpha$, accept the proposed sample.}
+        \Else
+        \State $\left( \btheta^{(m)}, \widehat{\aux}^{(m)} \right) \gets \left( \btheta^{(m-1)}, \widehat{\aux}^{(m-1)} \right)$ \Comment{With probability $1 - \alpha$, reject the proposed sample.}
+        \EndIf
+        \EndFor
+        
+        \Output $\left\{ \btheta^{(1)}, \ldots, \btheta^{(M)} \right\}$
+    \end{algorithmic}
+\end{algorithm}
+
+This algorithm, called marginal Metropolis-Hastings, was introduced in \cite{andrieu}. Compared to \autoref{alg:metropolis-hastings}, all components of this algorithm can be evaluated. Due to construction of the estimator $\widehat{\aux}$, the marginal of the limiting distribution of \autoref{alg:marginal-metropolis-hastings} is the original target $p(\btheta \mid \by_{1:T})$.
