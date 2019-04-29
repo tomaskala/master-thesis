@@ -92,9 +92,9 @@ Our primary interest is to perform inference about the static parameter $\btheta
 \paragraph{Bayesian inference}
 
 To perform Bayesian inference about $\btheta$, we express the posterior of $\btheta$ by applying the Bayes theorem:
-\begin{equation*}
+\begin{equation} \label{eq:posterior}
 p(\btheta \mid \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) \pprior(\btheta)}{\int p(\by_{1:T} \mid \btheta) \pprior(\btheta) \dx{\btheta}}.
-\end{equation*}
+\end{equation}
 
 Evaluating the likelihood $p(\by_{1:T} \mid \btheta)$ requires marginalizing over $\bx_{0:T}$:
 \begin{equation*}
@@ -326,4 +326,15 @@ The algorithm is called \emph{bootstrap} particle filter, due to resemblance of 
 
 As mentioned in \autoref{sec:particle-filter} is typically used to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$. However, we use it to provide a tractable approximation to the likelihood $p(\by_{1:T} \mid \btheta)$ such that it does not affect the limiting distribution of the Markov chain used in the Metropolis-Hastings algorithm. This section describes how it is done, and gives the resulting variant of the Metropolis-Hastings algorithm.
 
-Suppose that we are in possession of an estimator $\widehat{z}$ of the likelihood $p(\by_{1:T} \mid \btheta)$.
+Suppose that we are in possession of an estimator $\widehat{\aux}$ of the likelihood $p(\by_{1:T} \mid \btheta)$. As such, it necessarily depends on $\by_{1:T}$ and $\btheta$. Since we aim to use the particle filter to calculate $\widehat{\aux}$, the estimator also depends on the importance weights. This makes the estimator a random variable with some distribution denoted $\psi(\aux \mid \btheta, \by_{1:T})$.
+
+We now return to our model \eqref{eq:posterior} and introduce $\widehat{\aux}$ as an auxiliary variable, along with our variable of interest $\btheta$. This changes the target distribution from $p(\btheta \mid \by_{1:T})$ to
+\begin{equation} \label{eq:psi-joint}
+\psi(\btheta, \aux \mid \by_{1:T}) = p(\btheta \mid \by_{1:T}) \psi(\aux \mid \btheta, \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) p(\btheta)}{p(\by_{1:T})} \psi(\aux \mid \btheta, \by_{1:T}).
+\end{equation}
+In theory, we could now construct a Metropolis-Hastings algorithm with $\psi(\btheta, \aux \mid \by_{1:T})$ as the target, instead of $p(\btheta \mid \by_{1:T})$ as was the case in \autoref{alg:metropolis-hastings}. However, this would not solve our problem, since calculating the acceptance ratio still requires the calculation of the likelihood $p(\by_{1:T} \mid \btheta)$, as \eqref{eq:psi-joint} makes clear.
+
+Instead, we define a new target distribution over $(\btheta, \widehat{\aux})$ by replacing the likelihood in \eqref{eq:psi-joint} by its estimate $\widehat{\aux}$:
+\begin{equation*}
+p(\btheta, \aux \mid \by_{1:T}) \coloneqq \frac{\aux p(\btheta)}{p(\by_{1:T})} \psi(\aux \mid \btheta, \by_{1:T}).
+\end{equation*}
