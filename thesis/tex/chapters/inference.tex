@@ -93,12 +93,12 @@ Our primary interest is to perform inference about the static parameter $\btheta
 
 To perform Bayesian inference about $\btheta$, we express the posterior of $\btheta$ by applying the Bayes theorem:
 \begin{equation} \label{eq:posterior}
-p(\btheta \mid \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) \pprior(\btheta)}{\int p(\by_{1:T} \mid \btheta) \pprior(\btheta) \dx{\btheta}}.
+p(\btheta \mid \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) \pprior(\btheta)}{\int p(\by_{1:T} \mid \btheta) \pprior(\btheta) \; \dx{\btheta}}.
 \end{equation}
 
 Evaluating the likelihood $p(\by_{1:T} \mid \btheta)$ requires marginalizing over $\bx_{0:T}$:
 \begin{equation*}
-p(\by_{1:T} \mid \btheta) = \int p(\bx_{0:T}, \by_{1:T} \mid \btheta) \dx{\bx_{0:T}},
+p(\by_{1:T} \mid \btheta) = \int p(\bx_{0:T}, \by_{1:T} \mid \btheta) \; \dx{\bx_{0:T}},
 \end{equation*}
 where $p(\bx_{0:T}, \by_{1:T} \mid \btheta)$ is given in \eqref{eq:factorization}. Unless the SSM is linear and Gaussian, such $d_x(T+1)$-dimensional integral is intractable \citep{andrieu}.
 
@@ -109,7 +109,7 @@ For the time being, we proceed as if the likelihood was tractable. We derive a s
 
 Often, the interest is not in the posterior $p(\btheta \mid \by_{1:T})$ itself, but on the expectation of some function $\phi$ w.r.t. this distribution, i.e. on
 \begin{equation} \label{eq:posterior-integral}
-\E_{p(\btheta \mid \by_{1:T})}[\phi(\btheta)] = \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \dx{\btheta}.
+\E_{p(\btheta \mid \by_{1:T})}[\phi(\btheta)] = \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \; \dx{\btheta}.
 \end{equation}
 We use the Metropolis-Hastings algorithm \citep{metropolis, hastings} to obtain $M$ samples from $p(\btheta \mid \by_{1:T})$, denoted as $\btheta^{(m)},\ m = 1, \ldots, M$. The integral \eqref{eq:posterior-integral} is then approximated as the arithmetic mean
 \begin{equation*}
@@ -117,7 +117,7 @@ We use the Metropolis-Hastings algorithm \citep{metropolis, hastings} to obtain 
 \end{equation*}
 An appealing property of the Metropolis-Hastings algorithm is that such arithmetic mean converges to \eqref{eq:posterior-integral} almost surely \citep{robert-casella}, i.e.
 \begin{equation*}
-\frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}) \xrightarrow{a.s} \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \dx{\btheta},
+\frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}) \xrightarrow{a.s} \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \; \dx{\btheta},
 \end{equation*}
 where $\xrightarrow{a.s.}$ denotes almost sure convergence.
 
@@ -172,13 +172,13 @@ Here we briefly review the basic idea behind importance sampling. For a more tho
 
 Consider a situation where the expectation of some function $\phi$ w.r.t. the distribution with density $p$,
 \begin{equation} \label{eq:is-expectation}
-\Phi \coloneqq \E_{p}[\phi(\bm{X})] = \int \phi(\bm{x}) p(\bm{x}) \dx{\bm{x}},
+\Phi \coloneqq \E_{p}[\phi(\bm{X})] = \int \phi(\bm{x}) p(\bm{x}) \; \dx{\bm{x}},
 \end{equation}
 is of interest. Assume that the integral is analytically intractable, and that one cannot generate samples from $p$ to approximate this expectation. Assume further that the density $p$ can be evaluated, at least up to a multiplicative constant, i.e. that it takes the form
 \begin{equation*}
 p(\bm{x}) = \frac{p^*(\bm{x})}{Z},
 \end{equation*}
-where $Z$ is an unknown normalizing constant, and $p^*$ can be evaluated. Such situation frequently arises in Bayesian statistics, where a posterior distribution of interest $p(\btheta \mid \bm{x}) = \frac{p(\bm{x} \mid \btheta) p(\btheta)}{\int p(\bm{x} \mid \btheta) p(\btheta) \dx{\btheta}}$ is given in terms of the Bayes theorem. The normalizing constant in the denominator is often unavailable in analytic form. However, the numerator can be evaluated.
+where $Z$ is an unknown normalizing constant, and $p^*$ can be evaluated. Such situation frequently arises in Bayesian statistics, where a posterior distribution of interest $p(\btheta \mid \bm{x}) = \frac{p(\bm{x} \mid \btheta) p(\btheta)}{\int p(\bm{x} \mid \btheta) p(\btheta) \; \dx{\btheta}}$ is given in terms of the Bayes theorem. The normalizing constant in the denominator is often unavailable in analytic form. However, the numerator can be evaluated.
 
 Next, we introduce a (typically simpler) distribution with probability density $q(\bm{x}) = \frac{q^*(\bm{x})}{Z_Q}$ such that
 \begin{enumerate}
@@ -188,7 +188,7 @@ Next, we introduce a (typically simpler) distribution with probability density $
 \end{enumerate}
 The expectation \eqref{eq:is-expectation} can then be written as
 \begin{equation*}
-\Phi = \int \phi(\bm{x}) \frac{q(\bm{x})}{q(\bm{x})} p(\bm{x}) \dx{\bm{x}} = \int \phi(\bm{x}) \underbrace{\frac{p(\bm{x})}{q(\bm{x})}}_{w^*(\bm{x})} q(\bm{x}) \dx{\bm{x}} = \E_{q}[\phi(\bm{X}) w^*(\bm{X})],
+\Phi = \int \phi(\bm{x}) \frac{q(\bm{x})}{q(\bm{x})} p(\bm{x}) \; \dx{\bm{x}} = \int \phi(\bm{x}) \underbrace{\frac{p(\bm{x})}{q(\bm{x})}}_{w^*(\bm{x})} q(\bm{x}) \; \dx{\bm{x}} = \E_{q}[\phi(\bm{X}) w^*(\bm{X})],
 \end{equation*}
 where $w^*(\bm{x})$ are called the importance weights. By defining $w(\bm{x}) = \frac{p^*(\bm{x})}{q^*(\bm{x})}$, $\Phi$ can be approximated by
 \begin{equation*}
@@ -294,7 +294,7 @@ w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t^{(i)}) w_{t-1}^{(i)}.
 \end{equation}
 This form of $q$ is not optimal (the target) distribution. It is however ``close'' to it. The optimal distribution would be $q(\bx_t \mid \bx_{0:t-1}, \by_{1:t}, \btheta) = p(\bx_t \mid \bx_{t-1}, \by_{t}, \btheta)$, due to factorization assumptions of the SSM \eqref{eq:factorization}. Calculating it would involve marginalization over $\bx_t$,
 \begin{equation*}
-p(\bx_t \mid \bx_{t-1}, \by_{t}, \btheta) = \frac{p(\bx_t, \by_{t} \mid \bx_{t-1}, \btheta)}{\int p(\bx_t, \by_{t} \mid \bx_{t-1}, \btheta) \dx{\bx_t}} = \frac{\trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta)}{\int \trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta) \dx{\bx_t}},
+p(\bx_t \mid \bx_{t-1}, \by_{t}, \btheta) = \frac{p(\bx_t, \by_{t} \mid \bx_{t-1}, \btheta)}{\int p(\bx_t, \by_{t} \mid \bx_{t-1}, \btheta) \; \dx{\bx_t}} = \frac{\trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta)}{\int \trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta) \; \dx{\bx_t}},
 \end{equation*}
 which is generally not possible.
 
@@ -335,6 +335,27 @@ We now return to our model \eqref{eq:posterior} and introduce $\widehat{\aux}$ a
 In theory, we could now construct a Metropolis-Hastings algorithm with $\psi(\btheta, \aux \mid \by_{1:T})$ as the target, instead of $p(\btheta \mid \by_{1:T})$ as was the case in \autoref{alg:metropolis-hastings}. However, this would not solve our problem, since calculating the acceptance ratio still requires the calculation of the likelihood $p(\by_{1:T} \mid \btheta)$, as \eqref{eq:psi-joint} makes clear.
 
 Instead, we define a new target distribution over $(\btheta, \widehat{\aux})$ by replacing the likelihood in \eqref{eq:psi-joint} by its estimate $\widehat{\aux}$:
-\begin{equation*}
-p(\btheta, \aux \mid \by_{1:T}) \coloneqq \frac{\aux p(\btheta)}{p(\by_{1:T})} \psi(\aux \mid \btheta, \by_{1:T}).
-\end{equation*}
+\begin{equation} \label{eq:aux-joint}
+\auxjoint(\btheta, \aux \mid \by_{1:T}) \coloneqq \frac{\aux p(\btheta)}{p(\by_{1:T})} \psi(\aux \mid \btheta, \by_{1:T}).
+\end{equation}
+There are of course some conditions imposed on $\auxjoint(\btheta, \aux \mid \by_{1:T})$ for it to be useful:
+\begin{enumerate}
+    \item $\auxjoint(\btheta, \aux \mid \by_{1:T})$ must be non-negative for all $(\btheta, \aux)$;
+    \item $\auxjoint(\btheta, \aux \mid \by_{1:T})$ must integrate to 1;
+    \item the marginal distribution of $\auxjoint(\btheta, \aux \mid \by_{1:T})$ for $\btheta$ must be the original target $p(\btheta \mid \by_{1:T})$.
+\end{enumerate}
+The first two conditions simply state that $\auxjoint$ is a valid probability distribution. The third condition ensures that by constructing a Metropolis-Hastings algorithm with $\auxjoint$ as the target, the original target distribution is preserved once the auxiliary variables are marginalized out. All three conditions are satisfied is $\widehat{\aux}$ is a non-negative unbiased estimator of the likelihood $p(\by_{1:T} \mid \btheta)$. This is shown as follows.
+
+\begin{enumerate}[align=left]
+    \item Non-negativity of $\auxjoint$ follows from the assumed non-negativity of the estimator $\widehat{\aux}$ and validity of the distributions in \eqref{eq:aux-joint}.
+    \item[2, 3.] Assume that $\widehat{\aux}$ is an unbiased estimate of $p(\by_{1:T} \mid \btheta)$, i.e. that $\E_{\psi}[\widehat{\aux}] = p(\by_{1:T} \mid \btheta)$. Consider now the marginal of $\auxjoint$ for $\btheta$:
+    \begin{equation} \label{eq:marginal}
+    \begin{split}
+    \int \auxjoint(\btheta, \aux \mid \by_{1:T})\; \dx{\aux} & = \frac{p(\btheta)}{p(\by_{1:T})} \int \aux \psi(\aux \mid \btheta, \by_{1:T}) \; \dx{\aux} \\
+    & = \frac{p(\btheta)}{p(\by_{1:T})} \E_{\psi}[\widehat{\aux}] \\
+    & = \frac{p(\btheta)}{p(\by_{1:T})} p(\by_{1:T} \mid \btheta) \\
+    & = p(\btheta \mid \by_{1:T}),
+    \end{split}
+    \end{equation}
+    the original target distribution. This satisfies condition 3. For condition 2, we simply integrate \eqref{eq:marginal} w.r.t. $\btheta$, which results in 1 due to $p(\btheta \mid \by_{1:T})$ being a valid probability distribution.
+\end{enumerate}
