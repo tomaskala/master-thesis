@@ -1,7 +1,13 @@
 \chapter{Learning the parameters of a state-space model}
 \label{chap:inference}
 
-This chapter describes the state-space model (SSM) formulation we are working with. In \autoref{sec:ssm-definition}, we state our assumptions about the individual probability distributions. Then in \autoref{sec:parameter-inference}, we calculate the posterior distribution of the parameters of interest, and show that straightforward inference is not possible. Further on, we derive a sampler to approximate this distribution. By itself, this sampler is unusable, as it requires the evaluation of the model likelihood. To circumvent this, we introduce the particle filter in \autoref{sec:particle-filter}. This section gives the definition and some of the properties of the filter. Later in \autoref{sec:particle-filter-estimate} we show how to use the particle filter to estimate the likelihood, and argue that it does not affect the asymptotic properties of the sampler.
+This chapter describes the state-space model (SSM) formulation we are working with. In \autoref{sec:ssm-definition}, we formally define the SSM and state our assumptions about the individual probability distributions.
+
+In \autoref{sec:parameter-inference}, we calculate the posterior distribution of the parameters of interest, and show that straightforward inference is not possible. Further on, we derive a sampler to approximate this distribution. By itself, this sampler is unusable, as it requires the evaluation of the intractable likelihood. Nevertheless, it is illustrative to compare it with the variant derived later.
+
+To circumvent the likelihood evaluation, we introduce the particle filter in \autoref{sec:particle-filter}. This section gives the definition and some of the properties of the filter.
+
+Finally, in \autoref{sec:particle-filter-estimate} we show how to use the particle filter to estimate the likelihood, and argue that it does not affect the asymptotic properties of the sampler.
 
 Most of this chapter is based on \cite{andrieu} and \cite{schoen}.
 
@@ -10,7 +16,7 @@ Most of this chapter is based on \cite{andrieu} and \cite{schoen}.
 \section{State-Space Model definition} \label{sec:ssm-definition}
 The state-space model, often also called the hidden Markov model (HMM) assumes a sequence of latent states $\left\{\bx_t\right\}_{t=0}^\infty \subseteq \R^{d_x}$ following a Markov chain, and a sequence of observed variables $\left\{\by_t\right\}_{t=1}^\infty \subseteq \R^{d_y}$. All involved distributions are parameterized by an unknown static parameter $\btheta \in \Theta \subset \R^d$.
 
-For a fixed time $T \geq 1$, we use the shorthands $\bx_{0:T} = \left\{\bx_t\right\}_{t=0}^T$ and $\by_{1:T} = \left\{\by_t\right\}_{t=1}^T$.
+For a fixed time $T \geq 1$, we use the shorthands $\bx_{0:T} = \left\{\bx_t\right\}_{t=0}^T$ and $\by_{1:T} = \left\{\by_t\right\}_{t=1}^T$ throughout the chapter.
 
 The HMM formulation means that the joint distribution of $\bx_{0:T}$ and $\by_{1:T}$ factorizes, for any $T \geq 1$, into
 \begin{equation}\label{eq:factorization}
@@ -25,7 +31,7 @@ The factorization \eqref{eq:factorization} can be written more clearly as
 \by_t \mid \bx_t, \btheta & \sim \obs_t(\cdot \mid \bx_t, \btheta), \quad t = 1, \ldots, T.
 \end{align*}
 
-Finally, in accordance with the Bayesian approach \citep{bayes}, we introduce a prior distribution $\pprior$ over the unknown parameters $\btheta$ quantifying our knowledge about $\btheta$ before observing any data. This allows us to state the full joint distribution
+Finally, in accordance with the Bayesian approach \citep{bayes}, we introduce a prior distribution $\pprior$ over the unknown parameters $\btheta$ quantifying our knowledge about $\btheta$ before having observed any data. This allows us to state the full joint distribution
 \begin{equation}\label{eq:full-joint}
 p(\bx_{0:T}, \by_{1:T}, \btheta) = p(\bx_{0:T}, \by_{1:T} \mid \btheta) \pprior(\btheta).
 \end{equation}
@@ -86,7 +92,7 @@ Given an observed sequence $\by_{1:T}$, Bayesian inference relies on the joint p
 \begin{equation}\label{eq:joint-posterior}
 p(\btheta, \bx_{0:T} \mid \by_{1:T}) = \underbrace{p(\bx_{0:T} \mid \btheta, \by_{1:T})}_{\text{State inference}} \underbrace{p(\btheta \mid \by_{1:T})}_{\text{Parameter inference}}.
 \end{equation}
-Our primary interest is to perform inference about the static parameter $\btheta$. From \eqref{eq:joint-posterior}, it is clear that to infer about the hidden states $\bx_{0:T}$, one needs knowledge about $\btheta$, so even if the hidden states are of interest, inference about $\btheta$ is necessary. \autoref{sec:particle-filter-estimate} actually shows how to estimate $\bx_{0:T}$ as a by-product.
+Our primary interest is to perform inference about the static parameter $\btheta$. From \eqref{eq:joint-posterior}, it is clear that to infer about the hidden states $\bx_{0:T}$, one needs knowledge about $\btheta$, so even if the hidden states are of interest, inference about $\btheta$ is necessary.
 
 
 \paragraph{Bayesian inference}
@@ -109,17 +115,16 @@ For the time being, we proceed as if the likelihood was tractable. We derive a s
 
 Often, the interest is not in the posterior $p(\btheta \mid \by_{1:T})$ itself, but on the expectation of some function $\phi$ w.r.t. this distribution, i.e. on
 \begin{equation} \label{eq:posterior-integral}
-\E_{p(\btheta \mid \by_{1:T})}[\phi(\btheta)] = \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \; \dx{\btheta}.
+\E_{p(\cdot \mid \by_{1:T})}[\phi(\btheta)] = \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \; \dx{\btheta}.
 \end{equation}
-We use the Metropolis-Hastings algorithm \citep{metropolis, hastings} to obtain $M$ samples from $p(\btheta \mid \by_{1:T})$, denoted as $\btheta^{(m)},\ m = 1, \ldots, M$. The integral \eqref{eq:posterior-integral} is then approximated as the arithmetic mean
+We construct a Metropolis-Hastings sampler \citep{metropolis, hastings} with target distribution $p(\btheta \mid \by_{1:T})$. This gives us $M$ samples approximately distributed according to this target, denoted $\btheta^{(m)},\ m = 1, \ldots, M$. The expectation \eqref{eq:posterior-integral} is then approximated by the arithmetic mean
 \begin{equation*}
 \frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}).
 \end{equation*}
-An appealing property of the Metropolis-Hastings algorithm is that such arithmetic mean converges to \eqref{eq:posterior-integral} almost surely \citep{robert-casella}, i.e.
+An appealing property of the Metropolis-Hastings algorithm is that such arithmetic mean almost surely converges to \eqref{eq:posterior-integral} as the number of samples grows \citep{robert-casella}, i.e.
 \begin{equation*}
-\frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}) \xrightarrow{a.s} \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \; \dx{\btheta},
+\frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}) \xrightarrow[M \to \infty]{a.s} \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \; \dx{\btheta}.
 \end{equation*}
-where $\xrightarrow{a.s.}$ denotes almost sure convergence.
 
 Finally, we note that if one is indeed interested in the distribution $p(\btheta \mid \by_{1:T})$ itself, it can be recovered by the empirical distribution
 \begin{equation*}
@@ -129,7 +134,7 @@ where $\delta$ denotes the Dirac distribution. This estimate can be additionally
 
 
 \paragraph{Metropolis-Hastings algorithm}
-The Metropolis-Hastings algorithm is described in \autoref{alg:metropolis-hastings}. Although well-known, it is included for comparison with the variant introduced in \autoref{alg:marginal-metropolis-hastings}.
+The Metropolis-Hastings algorithm is described in \autoref{alg:metropolis-hastings}. Although well-known, it is included for comparison with the variant employing the particle filter, introduced in \autoref{alg:marginal-metropolis-hastings}.
 
 The target distribution is the parameter posterior $p(\btheta \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pprior(\btheta)$. In this case, it is not necessary to evaluate the normalizing constant, since it gets cancelled out.
 
@@ -200,7 +205,7 @@ The estimator $\widehat{\Phi}$ converges to the true expectation $\Phi$ as $N \t
 
 
 \paragraph{Sequential importance sampling (SIS)}
-The SIS algorithm uses a weighted set of particles $\left\{\left(\bm{x}_t^{(i)}, w_t^{(i)} \right) : i = 1, \ldots, N \right\}$, to represent the filtering distribution $p(\bm{x}_t \mid \by_{1:t}, \btheta)$. To simplify notation, we write $w_t^{(i)}$ instead of $w_t(\bm{x}^{(i)})$ from now on. The empirical approximation to $p(\bm{x}_t~\mid~\by_{1:t}, \btheta)$ is then
+The SIS algorithm uses a set of weighted particles $\left\{\left(\bm{x}_t^{(i)}, w_t^{(i)} \right) : i = 1, \ldots, N \right\}$, to represent the filtering distribution $p(\bm{x}_t \mid \by_{1:t}, \btheta)$. To simplify notation, we write $w_t^{(i)}$ instead of $w_t(\bm{x}^{(i)})$ from now on. The empirical approximation to $p(\bm{x}_t~\mid~\by_{1:t}, \btheta)$ is then
 \begin{equation*}
 \widehat{p}(\bm{x}_t \mid \by_{1:t}, \btheta) = \frac{\sum_{i=1}^N w_t^{(i)} \delta_{\bm{x}_t^{(i)}}(\bm{x}_t)}{\sum_{i=1}^N w_t^{(i)}}.
 \end{equation*}
@@ -217,7 +222,7 @@ p(\bx_{0:t} \mid \by_{1:t}) & \propto p(\by_t \mid \bx_{0:t}, \by_{1:t-1}) p(\bx
 \end{equation*}
 where the equalities follow from the hidden Markov model independence assumptions. For better clarity, we suppress the static parameter $\btheta$ from the conditioning.
 
-For the target $p(\bx_{0:t} \mid \by_{1:t})$, we introduce the importance sampling distribution $q(\bx_{0:t} \mid \by_{1:t})$ and sample $\bx_{0:t}^{(i)}$ from it. The importance weights are (up to normalization) given by
+For the target $p(\bx_{0:t} \mid \by_{1:t})$, we introduce an importance sampling distribution $q(\bx_{0:t} \mid \by_{1:t})$ and sample $\bx_{0:t}^{(i)}$ from it. The importance weights are (up to normalization) given by
 \begin{equation} \label{eq:weight-recursion1}
 \begin{split}
 w_t^{(i)} & \propto \frac{p(\bx_{0:t}{(i)} \mid \by_{1:t})}{q(\bx_{0:t}^{(i)} \mid \by_{1:t})} \\
@@ -279,10 +284,10 @@ To alleviate this, the following resampling step is introduced.
 
 The normalized importance weights are interpreted as a probability vector of a categorical distribution. The particles are then resampled (sampled with replacement) according to this distribution. This effectively selects a population of ``strong individuals'' for the next time step.
 
-The above described procedure is known as multinomial resampling. There are other, more complex, approaches, such as stratified resampling \citep{resampling} which further reduce the variance of the weights, at the cost of added computational complexity.
+\autoref{alg:resampling} is known as multinomial resampling. There are other, more sophisticated, approaches, such as stratified resampling \citep{resampling}, which come at the cost of increased complexity.
 
 \paragraph{The particle filter}
-The remaining step is the choice of the importance sampling distribution $q$. Obviously, the more similar this distribution is to the target, the closer approximation we obtain.
+The remaining step is the choice of the importance sampling distribution $q$. Obviously, the more similar this distribution is to the target $p$, the closer approximation we obtain.
 
 The particle filter arises when the transition distribution $\trans_t$ is chosen as the importance distribution, that is, when
 \begin{equation*}
@@ -292,12 +297,6 @@ The importance weights \eqref{eq:weight-recursion2} then simplify into
 \begin{equation} \label{eq:weight-recursion3}
 w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t^{(i)}) w_{t-1}^{(i)}.
 \end{equation}
-This form of $q$ is not optimal (the target) distribution. It is however ``close'' to it. The optimal distribution would be $q(\bx_t \mid \bx_{0:t-1}, \by_{1:t}, \btheta) = p(\bx_t \mid \bx_{t-1}, \by_{t}, \btheta)$, due to factorization assumptions of the SSM \eqref{eq:factorization}. Calculating it would involve marginalization over $\bx_t$,
-\begin{equation*}
-p(\bx_t \mid \bx_{t-1}, \by_{t}, \btheta) = \frac{p(\bx_t, \by_{t} \mid \bx_{t-1}, \btheta)}{\int p(\bx_t, \by_{t} \mid \bx_{t-1}, \btheta) \; \dx{\bx_t}} = \frac{\trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta)}{\int \trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta) \; \dx{\bx_t}},
-\end{equation*}
-which is generally not possible.
-
 The particle filter is summarized in \autoref{alg:particle-filter}.
 \begin{algorithm}[ht]
     \caption{Bootstrap particle filter}
@@ -324,10 +323,10 @@ The algorithm is called \emph{bootstrap} particle filter, due to resemblance of 
 
 \section{Using the particle filter to estimate the likelihood} \label{sec:particle-filter-estimate}
 
-As mentioned in \autoref{sec:particle-filter} is typically used to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$. This will be used to provide a tractable approximation to the likelihood $p(\by_{1:T} \mid \btheta)$ such that it does not affect the limiting distribution of the Markov chain used in the Metropolis-Hastings algorithm. This section describes how it is done, and gives the resulting variant of the Metropolis-Hastings algorithm.
+As mentioned in \autoref{sec:particle-filter}, the particle filter is typically used to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$. This will be utilized to provide a tractable approximation to the likelihood $p(\by_{1:T} \mid \btheta)$ such that the limiting distribution of the Metropolis-Hastings Markov chain remains unaffected. This section describes how it is done, and gives the resulting variant of the sampler
 
 \paragraph{Likelihood estimate in general}
-Suppose that we are in possession of an estimator $\widehat{\aux}$ of the likelihood $p(\by_{1:T} \mid \btheta)$. As such, it necessarily depends on $\by_{1:T}$ and $\btheta$. Since we aim to use the particle filter to calculate $\widehat{\aux}$, the estimator also depends on the importance weights. This makes the estimator a random variable with some distribution denoted $\psi(\aux \mid \btheta, \by_{1:T})$. It is not necessary to have this distribution available, as it is later shown to cancel out in the Metropolis-Hastings acceptance ratio.
+Suppose that we are in possession of an estimator $\widehat{\aux}$ of the likelihood $p(\by_{1:T} \mid \btheta)$. As such, it necessarily depends on $\by_{1:T}$ and $\btheta$. Since we aim to use the particle filter to calculate $\widehat{\aux}$, the estimator also depends on the importance weights calculated using random samples $\bx_t^{(i)}$. This makes the estimator a random variable with some distribution denoted $\psi(\aux \mid \btheta, \by_{1:T})$. It is not necessary to have this distribution available, as it is later shown to cancel out in the Metropolis-Hastings acceptance ratio.
 
 We now return to our model \eqref{eq:posterior} and introduce $\widehat{\aux}$ as an auxiliary variable, along with our variable of interest $\btheta$. This changes the target distribution from $p(\btheta \mid \by_{1:T})$ to
 \begin{equation} \label{eq:psi-joint}
@@ -345,7 +344,7 @@ There are of course some conditions imposed on $\auxjoint(\btheta, \aux \mid \by
     \item $\auxjoint(\btheta, \aux \mid \by_{1:T})$ must integrate to 1;
     \item the marginal distribution of $\auxjoint(\btheta, \aux \mid \by_{1:T})$ for $\btheta$ must be the original target $p(\btheta \mid \by_{1:T})$.
 \end{enumerate}
-The first two conditions simply state that $\auxjoint$ is a valid probability distribution. The third condition ensures that by constructing a Metropolis-Hastings algorithm with $\auxjoint$ as the target, the original target distribution is preserved once the auxiliary variables are marginalized out. All three conditions are satisfied is $\widehat{\aux}$ is a non-negative unbiased estimator of the likelihood $p(\by_{1:T} \mid \btheta)$. This is shown as follows.
+The first two conditions simply state that $\auxjoint$ is a valid probability distribution. The third condition ensures that by constructing a Metropolis-Hastings algorithm with $\auxjoint$ as the target, the original target distribution is preserved once the auxiliary variables are marginalized out. All three conditions are satisfied if $\widehat{\aux}$ is a non-negative unbiased estimator of the likelihood $p(\by_{1:T} \mid \btheta)$. This is shown as follows.
 
 \begin{enumerate}[align=left]
     \item Non-negativity of $\auxjoint$ follows from the assumed non-negativity of the estimator $\widehat{\aux}$ and validity of the distributions in \eqref{eq:aux-joint}.
@@ -358,11 +357,13 @@ The first two conditions simply state that $\auxjoint$ is a valid probability di
     & = p(\btheta \mid \by_{1:T}),
     \end{split}
     \end{equation}
-    the original target distribution. This satisfies condition 3. For condition 2, we simply integrate \eqref{eq:marginal} w.r.t. $\btheta$, which results in 1 due to $p(\btheta \mid \by_{1:T})$ being a valid probability distribution.
+    the original target distribution. This satisfies condition 3. For condition 2, we simply integrate \eqref{eq:marginal} w.r.t. $\btheta$, which results in unity due to $p(\btheta \mid \by_{1:T})$ being a valid probability distribution.
 \end{enumerate}
 
 \paragraph{Acceptance ratio computation}
-Given the new target distribution $\auxjoint$, we can now construct a Metropolis-Hastings algorithm on the joint space of $(\btheta, \aux)$. This means that the proposal density first samples $\btheta^\prime \sim q(\cdot \mid \btheta^{(m-1)})$, and then $\widehat{\aux}^\prime \sim \psi(\cdot \mid \btheta^\prime, \by_{1:T})$. The acceptance ratio can now be computed as
+Given the new target distribution $\auxjoint$, we can now construct a Metropolis-Hastings algorithm on the joint space of $(\btheta, \aux)$.
+
+This means that the proposed samples are now given as $(\btheta^\prime, \aux^\prime) \sim \psi(\cdot, \cdot \mid \by_{1:T})$. In practice, this is done by first sampling $\btheta^\prime \sim q(\cdot \mid \btheta^{(m-1)})$, and then $\widehat{\aux}^\prime \sim \psi(\cdot \mid \btheta^\prime, \by_{1:T})$. The acceptance ratio can now be computed as
 \begin{equation*}
 \begin{split}
 \alpha & = \min \left\{1, \frac{\auxjoint(\btheta^\prime, \aux^\prime \mid \by_{1:T})}{\auxjoint(\btheta^{(m-1)}, \aux^{(m-1)} \mid \by_{1:T})} \frac{\prop(\btheta^{(m-1)} \mid \btheta^\prime) \psi(\aux^{(m-1)} \mid \btheta^{(m-1)}, \by_{1:T})}{\prop(\btheta^\prime \mid \btheta^{(m-1)}) \psi(\aux^\prime \mid \btheta^\prime, \by_{1:T})} \right\} \\
