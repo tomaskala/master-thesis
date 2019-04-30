@@ -399,7 +399,7 @@ In $p(\by_t \mid \bx_t^{(i)}, \btheta)$, we recognize the particle filter weight
 \begin{equation} \label{eq:likelihood-estimate}
 \widehat{\aux} \coloneqq \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N w_t^{(i)}.
 \end{equation}
-This estimator is obviously non-negative due to construction of the weights. The proof that it is also unbiased (and therefore also integrates to 1) is more involved, and the reader is referred to \cite{del-moral} for the original proof.
+This estimator is obviously non-negative due to construction of the weights. The proof that it is also unbiased (and therefore also integrates to unity) is more involved, and the reader is referred to \cite{del-moral} for the original proof.
 
 Finally, we describe the resulting variant of the Metropolis-Hastings algorithm employing the likelihood estimate \eqref{eq:likelihood-estimate}.
 
@@ -417,9 +417,9 @@ Finally, we describe the resulting variant of the Metropolis-Hastings algorithm 
         \State $\text{Sample } \btheta^\prime \sim \prop(\cdot \mid \btheta^{(m-1)}).$
         \State $\text{Run \autoref{alg:particle-filter} with } \btheta^\prime \text{ to obtain the weights } w_{m,t}^{(i)}, \quad t = 1, \ldots, T, \ i = 1, \ldots, N.$
         \State $\text{Calculate } \widehat{\aux}^\prime \text{ according to \eqref{eq:likelihood-estimate} using } w_{m,t}^{(i)}.$
-        \State $\text{Calculate the aceptance probability } $ \begin{equation} \label{eq:acceptance-probability-tractable}
+        \State $\text{Calculate the aceptance probability } $ \begin{equation*} \label{eq:acceptance-probability-tractable}
         \alpha = \min \left\{1, \frac{\widehat{\aux}^\prime \pprior(\btheta^\prime)}{\widehat{\aux}^{(m-1)} \pprior(\btheta^{(m-1)})} \frac{\prop(\btheta^{(m-1)} \mid \btheta^\prime)}{\prop(\btheta^\prime \mid \btheta^{(m-1)})} \right\}.
-        \end{equation}
+        \end{equation*}
         \State $\text{Sample } u \sim \mathcal{U}(0,1).$
         \If {$u \leq \alpha$}
         \State $\left( \btheta^{(m)}, \widehat{\aux}^{(m)} \right) \gets \left( \btheta^\prime, \widehat{\aux}^\prime \right)$ \Comment{With probability $\alpha$, accept the proposed sample.}
