@@ -1,23 +1,22 @@
 \chapter{Approximate Bayesian Computation}
 \label{chap:abc}
 
-This chapter discusses the methodology of Approximate Bayesian Computation (ABC). We first motivate the use of ABC methods in our problem in \autoref{sec:abc-motivation}. Then, in \autoref{sec:abc-general}, we describe the method in general, mention some limitations of the basic formulation, and discuss how to address them using kernel functions. \autoref{sec:abc-ssm} then introduces the ABC to our state-space model framework. Finally, in \autoref{sec:abcmh}, we describe how exactly is the ABC method used in our model, and provide an alternative variant of the Metropolis-Hastings algorithm which utilizes ABC instead of the particle filter to provide a likelihood estimate.
+This chapter discusses the methodology of Approximate Bayesian Computation (ABC). We first motivate the use of ABC methods in our problem in \autoref{sec:abc-motivation}. Then, in \autoref{sec:abc-general}, we describe the method in general, mention some limitations of the basic formulation, and discuss how to address them using kernel functions. \autoref{sec:abc-ssm} then introduces the ABC to our state-space model framework. Finally, in \autoref{sec:abcmh}, we describe how exactly is the ABC method used in our model, and provide an alternative variant of the Metropolis-Hastings algorithm which relies on ABC instead of the particle filter to provide a likelihood estimate.
 
 
 \section{Motivation} \label{sec:abc-motivation}
-In the previous chapter, we have derived a way to bypass the likelihood function evaluation when calculating the Metropolis-Hastings acceptance ratio. The method relies on the particle filter to calculate a set of weights $w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t^{(i)}, \btheta)$, where $\obs_t$ is the observation model defined in \eqref{eq:factorization}. These weights are then used to estimate the likelihood $p(\by_{1:T} \mid \btheta)$. However, calculating the weights in such way requires full knowledge of this observation model.
+In the previous chapter, we have derived a way to bypass the likelihood function evaluation when calculating the Metropolis-Hastings acceptance ratio. The method relies on the particle filter to calculate a set of weights $w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t^{(i)}, \btheta)$, where $\obs_t$ is the observation model defined in \eqref{eq:factorization}. These weights are then used to estimate the likelihood $p(\by_{1:T} \mid \btheta)$, as given in \eqref{eq:likelihood-estimate}. However, calculating the weights in such way requires full knowledge of this observation model.
 
-In practice, one may not have access to a correct observation model in the form of a probability distribution $\obs_t$. Instead, only a model of the process which generates an observation $\by_t$ from the latent state $\bx_t$ may be available. This generative process may be described by a differential equation, chemical reaction, simulation, etc. One is then in possession of a mean to generate an observation, but not to evaluate how probable it is. By attempting to fit a probability distribution to this generative model, an error is necessarily introduced. The particle filter weights might not necessarily reflect reality, and would lead to incorrect results when using such misspecified model for $\obs_t$.
+In practice, one may not have access to a correct observation model in the form of a probability density $\obs_t$. Instead, only a model of the process which generates an observation $\by_t$ from the latent state $\bx_t$ may be available. This generative process may take a form of a differential equation, chemical reaction, simulation, etc. One is then in possession of a mean to generate an observation, but not to evaluate how probable it is. By attempting to fit a probability distribution to this generative model, an error is necessarily introduced. The particle filter weights might then not reflect reality, and would lead to incorrect results when using such misspecified model for $\obs_t$.
 
-Instead, we can utilize our knowledge of the generative process $\bx_t \mapsto \by_t$ to simulate a number of pseudo-observations $\bu_t$, and use them to approximate the likelihood $p(\by_{1:T} \mid \btheta)$. Then, one need not evaluate $\obs_t$, and so inference can proceed even without knowing the observation model. This is exactly the gist of the approximate Bayesian computation methodology, and is discussed in more detail in the next section.
+Instead, we can utilize our knowledge of the generative process $\bx_t \mapsto \by_t$ to simulate a number of pseudo-observations $\bu_t$, and use them to approximate the likelihood $p(\by_{1:T} \mid \btheta)$. Then, we need not evaluate $\obs_t$, and so inference can proceed even without knowing the observation model. This is exactly the idea behind the approximate Bayesian computation methodology, and is discussed in more detail in the next section.
 
 
 \section{ABC in general} \label{sec:abc-general}
-This section describes the approximate Bayesian computation method without assuming the SSM model. Only a brief overview is given, since we do not require the full generality of ABC. How to apply the ABC method to SSMs is then discussed in \autoref{sec:abc-ssm}.
-
-The methodology of ABC dates back to \cite{abc-old-old}, where a procedure to use simulated psedudo-observations to approximate the posterior distribution was first described. Lately, ABC methods have gained popularity in modelling biological processes \citep{abc-old}. A more recent review can be found in \cite{abc-recent}.
+Before describing how to apply ABC in our SSM framework in \autoref{sec:abc-ssm}, we first provide an overview of the method in full generality. Since the SSM framework does not require as general variant, we do not give a detailed treatment, and instead refer the reader to some of the literature mentioned below. This section should mostly give an idea of what exactly does ABC attempt to accomplish. Later on, we spend more time discussing the parts relevant to our problem.
 
 \paragraph{Approximate Bayesian Computation}
+The methodology of ABC dates back to \cite{abc-old-old}, where a procedure using simulated psedudo-observations to approximate the posterior distribution was first described. Lately, ABC methods have gained popularity in modelling biological processes \citep{abc-old}. A more recent review can be found in \cite{abc-recent}.
 
 In its classical formulation, ABC provides a way to approximate an intractable posterior $p(\btheta \mid \by) \propto p(\by \mid \btheta) \pprior(\btheta)$ by introducing an auxiliary variable $\bu$. The posterior approximation is then constructed by integrating over this variable, and considering only values sufficiently close to the true measurement. It takes the form of
 \begin{equation} \label{eq:abc-integral}
@@ -25,17 +24,16 @@ p^\epsilon(\btheta \mid \by) \propto \int \I_{\A_{\epsilon, \by}}(\bu) p(\bu \mi
 \end{equation}
 where $\I_A$ is the indicator function of a set $A$, $\A_{\epsilon, \by} = \left\{\bu \in \R^{d_y} : \rho(\bu, \by) \leq \epsilon \right\}$ and $\rho: \R^{d_y} \times \R^{d_y} \to \R$ is a metric.
 
-The motivation behind \eqref{eq:abc-integral} is that such integral can be approximated by randomly sampling from the likelihood $p(\cdot \mid \btheta)$ without needing to evaluate it. This way, the likelihood can exist only conceptually, and we are able to simulate samples $bu^{(i)}$ from a model reflecting some real process, without considering the underlying probability density.
+The motivation behind \eqref{eq:abc-integral} is that such integral can be approximated by randomly sampling from the likelihood $p(\cdot \mid \btheta)$ without needing to evaluate it. This way, the likelihood can exist only conceptually, and we are able to simulate samples $\bu^{(i)}$ from a model reflecting some real-world process, without considering the underlying probability density.
 
-The hyper-parameter $\epsilon \geq 0$ controls how far can the auxiliary variable $\bu$ be from the true measurement $\by$ for them to be considered similar. Obviously, the smaller $\epsilon$, the better approximation is obtained. However, setting $\epsilon$ too small hinders inference, done typically by sampling (discussed in \autoref{alg:abc-rejection} below).
+The hyper-parameter $\epsilon \geq 0$ controls how far can the auxiliary variable $\bu$ be from the true measurement $\by$ for them to be considered similar. Clearly, if we set $\epsilon = 0$, the integral becomes $p(\by \mid \btheta) \pprior(\btheta)$, and we recover the true posterior. In general, the smaller $\epsilon$, the better approximation is obtained, though at the cost of increased computational complexity, discussed in the next paragraph.
 
-To avoid the curse of dimensionality in case of high-dimensional observations $\by$, a summary statistic $\bm{s}: \R^{d_y} \to \R^p$ where $1 \leq p < d_y$ is often introduced. Instead of comparing $\rho(\bu, \by) \leq \epsilon$, one then compares $\rho(\bm{s}(\bu), \bm{s}(\by)) \leq \epsilon$ (assuming that the metric has been redefined to $\rho: \R^p \times \R^p \to \R$).
+To avoid the curse of dimensionality, a summary statistic $\bm{s}: \R^{d_y} \to \R^p$ where $1 \leq p < d_y$ is often introduced. Instead of comparing $\rho(\bu, \by) \leq \epsilon$, one then compares $\rho(\bm{s}(\bu), \bm{s}(\by)) \leq \epsilon$ (assuming that the metric has been redefined to $\rho: \R^p \times \R^p \to \R$).
 
-It can be shown that if $\bm{s}$ is a sufficient statistic for the parameter $\btheta$, the probability density $p^\epsilon(\btheta \mid \by)$ converges to $p(\btheta \mid \by)$ as $\epsilon \to 0$ \citep{jasra-time-series}. However, it is typically impossible to find such statistic outside of the exponential family of distributions.
+It can be shown that if $\bm{s}$ is a sufficient statistic for the parameter $\btheta$, the probability density $p^\epsilon(\btheta \mid \by)$ converges to $p(\btheta \mid \by)$ as $\epsilon \to 0$ \citep{jasra-time-series}. However, it is typically impossible to find such statistic outside of the exponential family of distributions. Otherwise, using a statistic that is not sufficient introduces an additional approximation error.
 
 \paragraph{Basic version of the ABC simulation}
-
-We now give a basic variant of approximating $p^\epsilon(\btheta \mid \by)$ by sampling. In the spirit of \eqref{eq:abc-integral}, the algorithm performs rejection sampling by comparing whether a sampled $\bu$ is in $\A_{\epsilon, \by}$ or not.
+We now give a basic variant of a sampling-based approximation to $p^\epsilon(\btheta \mid \by)$. In the spirit of \eqref{eq:abc-integral}, the algorithm performs rejection sampling by comparing whether a sampled $\bu$ is in $\A_{\epsilon, \by}$ or not. After describing the algorithm, we discuss some limitations of this basic approach.
 \begin{algorithm}[ht]
     \caption{ABC Rejection Algorithm}
     \label{alg:abc-rejection}
@@ -58,14 +56,14 @@ We now give a basic variant of approximating $p^\epsilon(\btheta \mid \by)$ by s
     \end{algorithmic}
 \end{algorithm}
 
-The algorithm iteratively samples parameters $\btheta^\prime$ from the prior, plugs them into the likelihood $p(\cdot \mid \btheta^\prime)$, and simulates pseudo-observations $\bu$. These are then compared to the true measurement $\by$ using the metric $\rho$. If the proposed parameter $\btheta^\prime$ gave rise to a pseudo-observation similar enough to the true $\by$ (i.e. $\bu \in \A_{\epsilon, \by}$), the parameter is kept. The posterior distribution $p(\btheta \mid \by)$ is then given in terms of the accepted samples $\btheta^{(1)}, \ldots, \btheta^{(M)}$ as
+The algorithm iteratively samples parameters $\btheta^\prime$ from the prior, plugs them into the likelihood $p(\cdot \mid \btheta^\prime)$, and simulates pseudo-observations $\bu$. These are then compared to the true measurement $\by$ using the metric $\rho$. If the proposed parameter $\btheta^\prime$ gave rise to a pseudo-observation similar enough to the true $\by$ (i.e. $\bu \in \A_{\epsilon, \by}$), the parameter is kept under the assumption that the true data are likely under $\btheta^\prime$. The ABC approximation to the posterior $p^\epsilon(\btheta \mid \by)$ is then given in terms of the accepted samples $\btheta^{(1)}, \ldots, \btheta^{(M)}$ as the empirical distribution
 \begin{equation*}
-p^\epsilon(\btheta \mid \by) = \frac{1}{M} \sum_{i=1}^M \delta_{\btheta^{(i)}}(\btheta).
+p^\epsilon(\btheta \mid \by) \approx \frac{1}{M} \sum_{i=1}^M \delta_{\btheta^{(i)}}(\btheta).
 \end{equation*}
 
 Setting a low value of $\epsilon$ increases the approximation accuracy, at the cost of increased rejection rate. On the other hand, setting $\epsilon$ too large causes the algorithm to accept more often, but leads to simulating pseudo-measurements dissimilar to $\by$ and, in turn, incorrect $\btheta^{(i)}$. Setting a correct value of $\epsilon$ is therefore the main difficulty when using ABC. Several approaches are discussed in \cite{jasra-filtering, jasra-time-series}, and one particular way \citep{dedecius} is used in \autoref{sec:abc-ssm} in the context of SSMs.
 
-There are many improvement to the basic ABC of \autoref{alg:abc-rejection}, discussed for instance in \cite{abc-recent}. However, we aim to use ABC only in the framework of the SSMs, we consider only one relevant to us.
+There are many improvement to the basic ABC of \autoref{alg:abc-rejection}, discussed for instance in \cite{abc-recent}. Below, we consider a issue particularly relevant to the use of ABC in the context of SSMs.
 
 \paragraph{Use of kernel functions}
 
