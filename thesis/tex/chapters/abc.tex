@@ -63,9 +63,12 @@ p^\epsilon(\btheta \mid \by) \approx \frac{1}{M} \sum_{i=1}^M \delta_{\btheta^{(
 
 Setting a low value of $\epsilon$ increases the approximation accuracy, at the cost of increased rejection rate. On the other hand, setting $\epsilon$ too large causes the algorithm to accept more often, but leads to simulating pseudo-measurements dissimilar to $\by$ and, in turn, incorrect $\btheta^{(i)}$. Setting a correct value of $\epsilon$ is therefore the main difficulty when using ABC. Several approaches are discussed in \cite{jasra-filtering, jasra-time-series}, and one particular way \citep{dedecius} is used in \autoref{sec:abc-ssm} in the context of SSMs.
 
-There are many improvement to the basic ABC of \autoref{alg:abc-rejection}, discussed for instance in \cite{abc-recent}. Below, we consider a issue particularly relevant to the use of ABC in the context of SSMs.
+There are many improvement to the basic ABC of \autoref{alg:abc-rejection}, discussed for instance in \cite{abc-recent}. In particular, more sophisticated sampling approaches relying again on MCMC are described. This is not an issue relevant to the SSM framework, as the samples are generated in a different fashion, given in \autoref{sec:abc-ssm}. Before investigating the use of ABC in SSMs, we consider one more issue in the next section, which will become particularly relevant.
 
 \paragraph{Use of kernel functions}
+
+
+{\color{red} TODO: Replacing the uniform kernel by a more general is similar to the importance sampling ``improving'' rejection sampling.}
 
 \section{ABC in SSMs} \label{sec:abc-ssm}
 
