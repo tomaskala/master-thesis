@@ -144,7 +144,7 @@ The algorithm further requires a proposal distribution $\prop$. Similarly to the
     \caption{Metropolis-Hastings}
     \label{alg:metropolis-hastings}
     \begin{algorithmic}[1]
-        \Input $\text{Number of samples } M,\ \left\{\by_1, \ldots, \by_T\right\}$
+        \Input $\text{Number of samples } M,\ \left\{\by_1, \ldots, \by_T\right\}.$
         
         \State $\text{Initialize } \btheta^{(0)}.$
         
@@ -247,7 +247,7 @@ The sequential importance sampling algorithm is summarized in \autoref{alg:sis}.
     \caption{Sequential Importance Sampling}
     \label{alg:sis}
     \begin{algorithmic}[1]
-        \Input $\text{Number of particles } N,\ \text{current parameter value } \btheta,\ \left\{\by_1, \ldots, \by_T\right\}$
+        \Input $\text{Number of particles } N,\ \text{current parameter value } \btheta,\ \left\{\by_1, \ldots, \by_T\right\}.$
         
         \State $\text{Sample } \bx_0^{(i)} \sim \sprior(\cdot \mid \btheta), \quad i = 1, \ldots, N.$ \Comment{Initialize $N$ particles.}
         
@@ -302,14 +302,14 @@ The particle filter is summarized in \autoref{alg:particle-filter}.
     \caption{Bootstrap particle filter}
     \label{alg:particle-filter}
     \begin{algorithmic}[1]
-        \Input $\text{Number of particles } N,\ \text{current parameter value } \btheta,\ \left\{\by_1, \ldots, \by_T\right\}$
+        \Input $\text{Number of particles } N,\ \text{current parameter value } \btheta,\ \left\{\by_1, \ldots, \by_T\right\}.$
         
         \State $\text{Sample } \bx_0^{(i)} \sim \sprior(\cdot \mid \btheta), \quad i = 1, \ldots, N.$ \Comment{Initialize $N$ particles.}
         
         \State $w_0^{(i)} \gets \frac{1}{N}, \quad i = 1, \ldots, N.$ \Comment{Initialize uniform weights.}
         
         \For{$t = 1\ \mathbf{to}\ T$}
-        \State $\text{Sample } \bx_t^{(i)} \sim \trans_t(\bx_t \mid \bx_{t-1}, \btheta), \quad i = 1, \ldots, N.$ \Comment{Sample $N$ new particles.}
+        \State $\text{Sample } \bx_t^{(i)} \sim \trans_t(\bx_t \mid \bx_{t-1}^{(i)}, \btheta), \quad i = 1, \ldots, N.$ \Comment{Sample $N$ new particles.}
         
         \State $\text{Set } w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t^{(i)}, \btheta) w_{t-1}^{(i)}, \quad i = 1, \ldots, N.$ \Comment{Update the weights as per \eqref{eq:weight-recursion3}.}
         
@@ -408,7 +408,7 @@ Finally, we describe the resulting variant of the Metropolis-Hastings algorithm 
     \caption{Marginal Metropolis-Hastings}
     \label{alg:marginal-metropolis-hastings}
     \begin{algorithmic}[1]
-        \Input $\text{Number of samples } M,\ \left\{\by_1, \ldots, \by_T\right\}$
+        \Input $\text{Number of samples } M,\ \left\{\by_1, \ldots, \by_T\right\}.$
         
         \State $\text{Initialize } \btheta^{(0)}.$
         \State $\text{Run \autoref{alg:particle-filter} with } \btheta^{(0)} \text{ to obtain the weights } w_{0,t}^{(i)}, \quad t = 1, \ldots, T,\ i = 1, \ldots, N.$

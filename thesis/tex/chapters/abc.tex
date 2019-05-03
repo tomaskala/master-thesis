@@ -61,16 +61,67 @@ The algorithm iteratively samples parameters $\btheta^\prime$ from the prior, pl
 p^\epsilon(\btheta \mid \by) \approx \frac{1}{M} \sum_{i=1}^M \delta_{\btheta^{(i)}}(\btheta).
 \end{equation*}
 
-Setting a low value of $\epsilon$ increases the approximation accuracy, at the cost of increased rejection rate. On the other hand, setting $\epsilon$ too large causes the algorithm to accept more often, but leads to simulating pseudo-measurements dissimilar to $\by$ and, in turn, incorrect $\btheta^{(i)}$. Setting a correct value of $\epsilon$ is therefore the main difficulty when using ABC. Several approaches are discussed in \cite{jasra-filtering, jasra-time-series}, and one particular way \citep{dedecius} is used in \autoref{sec:abc-ssm} in the context of SSMs.
+Setting a low value of $\epsilon$ increases the approximation accuracy, at the cost of increased rejection rate. On the other hand, setting $\epsilon$ too large causes the algorithm to accept more often, but leads to simulating pseudo-measurements dissimilar to $\by$ and, in turn, incorrect $\btheta^{(i)}$. Setting a suitable value of $\epsilon$ is therefore the main difficulty when using ABC. Several approaches are discussed in \cite{jasra-filtering, jasra-time-series}, and one particular way \citep{dedecius} is used in \autoref{sec:abc-ssm} in the context of SSMs.
 
-There are many improvement to the basic ABC of \autoref{alg:abc-rejection}, discussed for instance in \cite{abc-recent}. In particular, more sophisticated sampling approaches relying again on MCMC are described. This is not an issue relevant to the SSM framework, as the samples are generated in a different fashion, given in \autoref{sec:abc-ssm}. Before investigating the use of ABC in SSMs, we consider one more issue in the next section, which will become particularly relevant.
-
-\paragraph{Use of kernel functions}
-
-
-{\color{red} TODO: Replacing the uniform kernel by a more general is similar to the importance sampling ``improving'' rejection sampling.}
+There are many improvement to the basic ABC of \autoref{alg:abc-rejection}, discussed for instance in \cite{abc-recent}. In particular, more sophisticated sampling approaches relying again on MCMC are described. This is not an issue relevant to the SSM framework, as the samples are generated in a different fashion, given in the next section.
 
 \section{ABC in SSMs} \label{sec:abc-ssm}
+Next, we describe how exactly is the ABC methodology applied in the context of SSMs.
+
+\autoref{sec:abc-general} states that the typical use case of ABC arises in cases where we have knowledge about the data-generating process, but are unable to evaluate the probability of such data. In the context of SSMs, this translates into knowing how the observed values $\by_t$ have been generated from the latent states $\bx_t$, but being unable to evaluate $\obs_t(\by_t \mid \bx_t, \btheta)$. This prevents us from calculating the importance weights $w_t$ using the particle filter, which relies on being able to evaluate $\obs_t$.
+
+The papers \cite{tina-toni} and \cite{jasra-filtering} describe how a filter could be constructed using the ABC approximation. Additionally, \cite{jasra-time-series} applies this filter in the context of SSMs. We first discuss the filter as given in the latter paper. A particular limitation of this algorithm is then considered, and a way to address it is proposed.
+
+\paragraph{ABC filter}
+In SSMs, the observations $\by_t$ are typically low-dimensional, often scalar quantities. It is then not necessary to consider any summary statistics. For simplicity, we also assume that $\rho$ is the Euclidean distance.
+
+\cite{jasra-filtering} consider a modification of the particle filter (\autoref{alg:particle-filter}) which calculates the importance weights $w_t^{(i)}$ based on the closeness of the simulated pseudo-observations to the true measurements. The pseudocode is given in \autoref{alg:abc-filter}.
+
+\begin{algorithm}[ht]
+    \caption{ABC-based filter}
+    \label{alg:abc-filter}
+    \begin{algorithmic}[1]
+        \Input $\text{Number of particles } N,\ \text{current parameter value } \btheta, \text{maximum distance } \epsilon,\ \left\{\by_1, \ldots, \by_T\right\}.$
+        
+        \State $\text{Sample } \bx_0^{(i)} \sim \sprior(\cdot \mid \btheta), \quad i = 1, \ldots, N.$ \Comment{Initialize $N$ particles.}
+        
+        \State $w_0^{(i)} \gets \frac{1}{N}, \quad i = 1, \ldots, N.$ \Comment{Initialize uniform weights.}
+        
+        \For{$t = 1\ \mathbf{to}\ T$}
+        \State $\text{Sample } \bx_t^{(i)} \sim \trans_t(\bx_t \mid \bx_{t-1}^{(i)}, \btheta), \quad i = 1, \ldots, N.$ \Comment{Sample $N$ new particles.}
+        
+        \State $\text{Simulate } \bu_t^{(i)} \text{ from } \obs_t(\cdot \mid \bx_t^{(i)}), \quad i = 1, \ldots, N.$ \Comment{Simulate $N$ pseudo-observations.}
+        
+        \State $\text{Set } w_t^{(i)} \propto \I_{\A_{\epsilon, \by_t}}(\bu_t^{(i)}) w_{t-1}^{(i)}, \quad i = 1, \ldots, N.$
+        
+        \State $\text{Resample } \bx_t^{(i)} \text{ and reset } w_t^{(i)} \text{ using \autoref{alg:resampling}}, \quad i = 1, \ldots, N.$
+        \EndFor
+    \end{algorithmic}
+\end{algorithm}
+
+As given in \cite{jasra-time-series}, the likelihood $p(\by_{1:T} \mid \btheta)$ is then approximated as
+\begin{equation*}
+\widehat{\aux} = \prod_{t=1}^T \left[\frac{1}{N} \sum_{i=1}^N \frac{w_t^{(i)}}{\int_{\A_{\epsilon, \by_t}} \dx{\bu}} \right].
+\end{equation*}
+The integral in the denominator essentially normalizes the weights $w_t^{(i)}$ to be equal to the probability density of the uniform distribution $\mathcal{U}(\by_t - \epsilon, \by_t + \epsilon)$ (uniform distribution in a ball centered at $\by_t$ with radius $\epsilon$).
+
+{\color{red} TODO: Discuss the ``unbiasedness'' of this estimate. Mention noisy ABC.}
+
+
+\paragraph{Use of kernel functions}
+A limitation in the algorithm above lies in the use of the indicator function $\I_{\A_{\epsilon, \by}}$. There are two problems:
+\begin{enumerate}
+    \item A practical one, as it may happen that no samples are accepted, and the output is null.
+    \item A more fundamental one, the simulated pseudo-observations $\bu_t$ are all assigned equal weights, regardless of how far they lie from the true measurement $\by_t$. Intuitively, a pseudo-observation closer to the true $\by_t$ should be assigned a higher weight than one which is further away.
+\end{enumerate}
+Both issues are solved by considering a general kernel function in place of the indicator $\I_{\A_{\epsilon, \by}}$. Let a kernel of width $\epsilon$ centered at $\by$ and evaluated at $\bu$ be denoted by $\kappa(\bu; \by, \epsilon)$.
+
+
+{\color{red} TODO: Replacing the uniform kernel by a more general is similar to the importance sampling ``improving'' rejection sampling. Cite MacKay.}
+
+{\color{red} TODO: Give examples of Gaussian and Cauchy kernels, and mention that the indicator arises as a special case of the uniform kernel. Note that the kernels need to be normalized to integrate to unity.}
+
+\paragraph{Kernel width tuning}
 
 
 \section{Likelihood estimate through ABC} \label{sec:abcmh}
