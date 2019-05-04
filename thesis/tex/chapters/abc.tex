@@ -20,9 +20,9 @@ One thing to note is that ABC has traditionally been applied to estimate the pos
 \paragraph{Approximate Bayesian Computation}
 The methodology of ABC dates back to \cite{abc-old-old}, where a procedure using simulated psedudo-observations to approximate the posterior distribution was first described. Lately, ABC methods have gained popularity in modelling biological processes \citep{abc-old}. A more recent review can be found in \cite{abc-recent}.
 
-In its classical formulation, ABC provides a way to approximate an intractable posterior $p(\btheta \mid \by) \propto p(\by \mid \btheta) \pprior(\btheta)$ by introducing an auxiliary variable $\bu$. The posterior approximation is then constructed by integrating over this variable, and considering only values sufficiently close to the true measurement. It takes the form of
+In its classical formulation, ABC provides a way to approximate an intractable posterior $p(\btheta \mid \by) \propto p(\by \mid \btheta) \pprior(\btheta)$ by introducing an auxiliary variable $\bu$. The posterior approximation is then constructed by integrating over this variable \citep{jasra-filtering}, and considering only values sufficiently close to the true measurement. It takes the form of
 \begin{equation} \label{eq:abc-integral}
-p^\epsilon(\btheta \mid \by) \propto \int \I_{\A_{\epsilon, \by}}(\bu) p(\bu \mid \btheta) \pprior(\btheta) \; \dx{\bu},
+p^\epsilon(\btheta \mid \by) = \frac{\int \I_{\A_{\epsilon, \by}}(\bu) p(\bu \mid \btheta) \pprior(\btheta) \; \dx{\bu}}{\int_{\A_{\epsilon, \by}} \dx{\bu}},
 \end{equation}
 where $\I_A$ is the indicator function of a set $A$, $\A_{\epsilon, \by} = \left\{\bu \in \R^{d_y} : \rho(\bu, \by) \leq \epsilon \right\}$ and $\rho: \R^{d_y} \times \R^{d_y} \to \R$ is a metric, typically the Euclidean distance.
 
@@ -101,15 +101,29 @@ In SSMs, the observations $\by_t$ are typically low-dimensional, often scalar qu
     \end{algorithmic}
 \end{algorithm}
 
-{\color{red} TODO: Start refactoring here. Describe the algorithm in words, then nicely follow with the likelihood estimate.}
+The algorithm proceeds similarly to \autoref{alg:particle-filter} except for the way the weights are computed. Instead of evaluating the unavailable density $\obs_t$ at the true observation $\by_t$, a pseudo-observation $\bu_t$ is simulated. The weight is then set to a non-zero constant if $\bu_t \in \A_{\epsilon, \by_t}$, and 0 otherwise. It may seem that the weights for the same particle $i$ necessarily collapse to 0 after a number of time steps due to the recursive multiplication in step 6. However, step 7 resets the weights uniformly after resampling, so such collapse does not occur.
 
-As given in \cite{jasra-time-series}, the likelihood $p(\by_{1:T} \mid \btheta)$ is then approximated as
-\begin{equation*}
+Analogously to \autoref{sec:particle-filter-estimate}, the weights are then used to approximate the likelihood $p(\by_{1:T} \mid \btheta)$. According to \cite{jasra-time-series}, the estimate is given by
+\begin{equation} \label{eq:abc-likelihood}
 \widehat{\aux} = \prod_{t=1}^T \left[\frac{1}{N} \sum_{i=1}^N \frac{w_t^{(i)}}{\int_{\A_{\epsilon, \by_t}} \dx{\bu}} \right].
-\end{equation*}
-The integral in the denominator essentially normalizes the weights $w_t^{(i)}$ to be equal to the probability density of the uniform distribution $\mathcal{U}(\by_t - \epsilon, \by_t + \epsilon)$ (uniform distribution in a ball centered at $\by_t$ with radius $\epsilon$).
+\end{equation}
+The integral in the denominator essentially normalizes the weights $w_t^{(i)}$ to be equal to the probability density of $\mathcal{U}(\by_t; \epsilon)$, the uniform distribution in a sphere centered at $\by_t$ with radius $\epsilon$.
 
-{\color{red} TODO: Discuss the ``unbiasedness'' of this estimate. Mention noisy ABC.}
+\paragraph{Bias}
+The use of this ABC filter introduces bias to the parameter inference. Recall that in \autoref{sec:particle-filter-estimate}, we required $\widehat{\aux}$ to be an unbiased estimator of $p(\by_{1:T} \mid \btheta)$. This was the case when the weights were calculated according to $w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t) w_{t-1}^{(i)}$. This unbiasedness is not preserved here, since $\widehat{\aux}$ estimates
+\begin{equation*}
+\begin{split}
+p^\epsilon(\by_{1:T} \mid \btheta) &= \int p^\epsilon(\bx_{0:T}, \by_{1:T} \mid \btheta) \; \dx{\bx_{0:T}} \\
+&= \int \sprior(\bx_0 \mid \btheta) \prod_{t=1}^T \trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t^\epsilon(\by_t \mid \bx_t, \btheta) \; \dx{\bx_{0:T}},
+\end{split}
+\end{equation*}
+(compare the inside of the integral with \eqref{eq:factorization}), as noted by \cite{jasra-time-series}. Here the approximate observation density is given by the ABC form
+\begin{equation*}
+\obs_t^\epsilon(\by_t \mid \bx_t, \btheta) = \frac{\int \I_{\A_{\epsilon, \by_t}}(\bu) \obs_t(\bu \mid \bx_t, \btheta) \; \dx{\bu}}{\int_{\A_{\epsilon, \by_t}} \dx{\bu}},
+\end{equation*}
+similarly to \eqref{eq:abc-integral}. This essentially means that by plugging \eqref{eq:abc-likelihood} into the Metropolis-Hastings acceptance ratio, the limiting distribution of the underlying Markov chain becomes $p^\epsilon(\btheta \mid \by_{1:T}) \propto p^\epsilon(\by_{1:T} \mid \btheta) \pprior(\btheta)$, instead of the correct $p(\btheta \mid \by_{1:T})$. In general, this bias cannot be dealt with, and is a price to pay for using the incorrect observation model.
+
+An interesting way to address this deficiency has been proposed in \cite{noisy-abc1} and in \cite{noisy-abc2}. The authors note that one uses data $\by_{1:T}$ assumed to have been generated according to \eqref{eq:factorization}, $p(\by_{1:T} \mid \btheta)$, but fitting the ABC approximation $p^\epsilon(\by_{1:T} \mid \btheta)$. In an attempt to bring the data closer the model being really fitted, the authors use a sequence of perturbed observations $\bm{z}_t = \by_t + \bm{v}$, $\bm{v} \sim \mathcal{U}(\bm{0}; \epsilon)$ which denotes the uniform distribution in a sphere with radius $\epsilon$ centered at the origin. It is proved that if $\btheta$ is estimated according to maximum likelihood, the estimate is consistent when using the perturbed sequence $\bm{z}_{1:T}$.
 
 
 \paragraph{Use of kernel functions}
