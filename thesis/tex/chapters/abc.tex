@@ -105,7 +105,7 @@ The algorithm proceeds similarly to \autoref{alg:particle-filter} except for the
 
 Analogously to \autoref{sec:particle-filter-estimate}, the weights are then used to approximate the likelihood $p(\by_{1:T} \mid \btheta)$. According to \cite{jasra-time-series}, the estimate is given by
 \begin{equation} \label{eq:abc-likelihood}
-\widehat{\aux} = \prod_{t=1}^T \left[\frac{1}{N} \sum_{i=1}^N \frac{w_t^{(i)}}{\int_{\A_{\epsilon, \by_t}} \dx{\bu}} \right].
+\widehat{\aux} = \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N \frac{w_t^{(i)}}{\int_{\A_{\epsilon, \by_t}} \dx{\bu}}.
 \end{equation}
 The integral in the denominator essentially normalizes the weights $w_t^{(i)}$ to be equal to the probability density of $\mathcal{U}(\by_t; \epsilon)$, the uniform distribution in a sphere centered at $\by_t$ with radius $\epsilon$.
 
@@ -127,19 +127,49 @@ An interesting way to address this deficiency has been proposed in \cite{noisy-a
 
 
 \paragraph{Use of kernel functions}
-A limitation in the algorithm above lies in the use of the indicator function $\I_{\A_{\epsilon, \by}}$. There are two problems:
+A limitation of \autoref{alg:abc-rejection} and \autoref{alg:abc-filter} lies in the use of the indicator function $\I_{\A_{\epsilon, \by}}$. There are two problems:
 \begin{enumerate}
-    \item A practical one, as it may happen that no samples are accepted, and the output is null.
+    \item A practical one; it may happen that no samples are accepted, and the output is null in case of \autoref{alg:abc-rejection}, or too many weights become zero in case of \autoref{alg:abc-filter}.
     \item A more fundamental one, the simulated pseudo-observations $\bu_t$ are all assigned equal weights, regardless of how far they lie from the true measurement $\by_t$. Intuitively, a pseudo-observation closer to the true $\by_t$ should be assigned a higher weight than one which is further away.
 \end{enumerate}
-Both issues are solved by considering a general kernel function in place of the indicator $\I_{\A_{\epsilon, \by}}$. Let a kernel of width $\epsilon$ centered at $\by$ and evaluated at $\bu$ be denoted by $\kappa(\bu; \by, \epsilon)$.
+Both issues can be mitigated by considering a general kernel function in place of the indicator $\I_{\A_{\epsilon, \by}}$. Let a kernel of width $\epsilon$ centered at $\by$ and evaluated at $\bu$ be denoted by $\kappa(\bu; \by, \epsilon)$. In machine learning, kernel functions are often taken \emph{proportional} to some symmetric probability density function \citep{elements}. However, as we aim to replace the indicator function $\I_{\A_{\epsilon, \by}}$ by such kernel, we require the kernel to be properly normalized (integrate to unity), to mirror the normalization in \eqref{eq:abc-likelihood}.
 
+With such kernel function, we can then write $w_t^{(i)} \propto \kappa(\bu_t; \by_t, \epsilon) w_{t-1}^{(i)}$. The likelihood estimate \eqref{eq:abc-likelihood} then becomes
+\begin{equation} \label{eq:abc-likelihood-kernel}
+\widehat{\aux} = \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N w_t^{(i)}
+\end{equation}
+due to the kernel having been normalized. This way, the weights are no longer uniformly set, but instead reflect the distance of $\bu_t$ from $\by_t$. There is also no risk of the filter collapsing due to majority of the weights becoming zero.
 
-{\color{red} TODO: Replacing the uniform kernel by a more general is similar to the importance sampling ``improving'' rejection sampling. Cite MacKay.}
+Introducing the kernel function to the weights computation is in principle similar to using importance sampling rather than simple rejection sampling \citep{information-theory}. Instead of accepting/rejecting the generated samples based on whether they match some criterion or not, they are all accepted and weighted according to \emph{how well} they match the criterion.
 
-{\color{red} TODO: Give examples of Gaussian and Cauchy kernels, and mention that the indicator arises as a special case of the uniform kernel. Note that the kernels need to be normalized to integrate to unity.}
+Finally, we give several examples of commonly used kernel functions and comment on their usage.
+{\color{red} TODO: One-dimensional!}
+\begin{enumerate}
+    \item \textbf{Gaussian kernel} The Gaussian kernel takes the form
+    \begin{equation*}
+    \kappa(u; y, \epsilon) = \frac{1}{\sqrt{2 \pi \epsilon^2}} \exp \left\{-\frac{\left(u - y\right)^2}{2 \epsilon^2}\right\}.
+    \end{equation*}
+    It is one of the most-commonly used kernel functions.
+    \item \textbf{Cauchy  kernel} The Cauchy kernel takes the form
+    \begin{equation*}
+    \kappa(u; y, \epsilon) = \frac{1}{\pi \epsilon \left[ 1 + \left(\frac{u - y}{\epsilon}\right)^2 \right]}.
+    \end{equation*}
+    As opposed to the Gaussian distribution, the Cauchy distribution has heavier tails, and so it is suitable for situations with potential distant observations. This kernel typically assigns non-trivial probability even to distant pseudo-observations, and so the filter does not collapse.
+    
+    \item \textbf{Uniform kernel} The uniform kernel takes the form
+    \begin{equation*}
+    \kappa(u; y, \epsilon) = \begin{cases}
+    \frac{1}{2 \epsilon}, & y - \epsilon < u < u + \epsilon; \\
+    0, & \text{otherwise}.
+    \end{cases}
+    \end{equation*}
+    Using this kernel, we recover the standard ABC which accepts $u$ if $u \in \A_{\epsilon, y} = \left\{u : \left| u - y \right| < \epsilon \right\}$.
+\end{enumerate}
+\autoref{chap:applications} provides comparison of different kernel functions.
+
 
 \paragraph{Kernel width tuning}
+In this paragraph, we address the issue of tuning the kernel width $\epsilon$. Since the previous section has shown that the indicator function $\I_{\A_{\epsilon, \by}}$ is recovered by a particular kernel, the method also applies to the standard ABC formulation.
 
 
 \section{Likelihood estimate through ABC} \label{sec:abcmh}
