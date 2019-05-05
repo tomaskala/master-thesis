@@ -1,7 +1,7 @@
 \chapter{Approximate Bayesian Computation}
 \label{chap:abc}
 
-This chapter discusses the methodology of Approximate Bayesian Computation (ABC). We first motivate the use of ABC methods in our problem in \autoref{sec:abc-motivation}. Then, in \autoref{sec:abc-general}, we describe the method in general and discuss some limitations. \autoref{sec:abc-ssm} then introduces the ABC to our state-space model framework, along with addressing potential issues through kernel functions. Finally, in \autoref{sec:abcmh}, we describe how exactly is the ABC method used in our model, and provide an alternative variant of the Metropolis-Hastings algorithm which relies on ABC instead of the particle filter to provide a likelihood estimate.
+This chapter discusses the methodology of Approximate Bayesian Computation (ABC). We first motivate the use of ABC methods in our problem in \autoref{sec:abc-motivation}. Then, in \autoref{sec:abc-general}, we describe the method in general and discuss some limitations. \autoref{sec:abc-ssm} then introduces the ABC to our state-space model framework, and addresses some potential issues through kernel functions. Finally, in \autoref{sec:abcmh}, we summarize how exactly is the ABC method used in our model, and provide an alternative variant of the Metropolis-Hastings algorithm which relies on ABC instead of the particle filter to estimate the likelihood.
 
 
 \section{Motivation} \label{sec:abc-motivation}
@@ -11,18 +11,20 @@ In practice, one may not have access to a correct observation model in the form 
 
 Instead, we can utilize our knowledge of the generative process $\bx_t \mapsto \by_t$ to simulate a number of pseudo-observations $\bu_t$, and use them to approximate the likelihood $p(\by_{1:T} \mid \btheta)$. Then, we need not evaluate $\obs_t$, and so inference can proceed even without knowing the observation model density. This is exactly the idea behind the approximate Bayesian computation methodology, and is discussed in more detail in the next section.
 
+Unfortunately, such approximation comes with a price. In \autoref{chap:inference}, it has been shown that using the particle filter does not introduce any approximation error, since the likelihood estimate is unbiased, and leaves the limiting distribution of the Metropolis-Hastings Markov chain intact. This is not the case when applying ABC methods, and is addressed in \autoref{sec:abc-ssm}.
+
 
 \section{ABC in general} \label{sec:abc-general}
-Before describing how to apply ABC in our SSM framework in \autoref{sec:abc-ssm}, we first provide an overview of the method in full generality. Since the SSM framework does not require as general variant, we do not give a detailed treatment, and instead refer the reader to some of the literature mentioned below. This section should mostly give an idea of what exactly does ABC attempt to accomplish. Later on, we spend more time discussing the parts relevant to our problem.
+Before describing how to apply ABC in our SSM framework in \autoref{sec:abc-ssm}, we first review the method in general. Since the SSM framework does not require as general variant, we do not give a detailed treatment, and instead refer the reader to some of the literature mentioned below. This section should mostly give an idea of what exactly does ABC attempt to accomplish. Later on, we spend more time discussing the parts relevant to our problem.
 
 One thing to note is that ABC has traditionally been applied to estimate the posterior $p(\btheta \mid \by)$ for some parameter $\btheta$ and observation $\by$. The method is considered with this in mind, and in \autoref{sec:abc-ssm}, we describe how use it to estimate the likelihood instead.
 
 \paragraph{Approximate Bayesian Computation}
 The methodology of ABC dates back to \cite{abc-old-old}, where a procedure using simulated psedudo-observations to approximate the posterior distribution was first described. Lately, ABC methods have gained popularity in modelling biological processes \citep{abc-old}. A more recent review can be found in \cite{abc-recent}.
 
-In its classical formulation, ABC provides a way to approximate an intractable posterior $p(\btheta \mid \by) \propto p(\by \mid \btheta) \pprior(\btheta)$ by introducing an auxiliary variable $\bu$. The posterior approximation is then constructed by integrating over this variable \citep{jasra-filtering}, and considering only values sufficiently close to the true measurement. It takes the form of
+In its classical formulation, ABC provides a way to approximate an intractable posterior ${p(\btheta \mid \by) \propto p(\by \mid \btheta) \pprior(\btheta)}$ by introducing an auxiliary variable $\bu$. The posterior approximation is then constructed by integrating over this variable \citep{jasra-filtering}, and considering only values sufficiently close to the true measurement. It takes the form of
 \begin{equation} \label{eq:abc-integral}
-p^\epsilon(\btheta \mid \by) = \frac{\int \I_{\A_{\epsilon, \by}}(\bu) p(\bu \mid \btheta) \pprior(\btheta) \; \dx{\bu}}{\int_{\A_{\epsilon, \by}} \dx{\bu}},
+p(\btheta \mid \by) \approx p^\epsilon(\btheta \mid \by) = \frac{\int \I_{\A_{\epsilon, \by}}(\bu) p(\bu \mid \btheta) \pprior(\btheta) \; \dx{\bu}}{\int_{\A_{\epsilon, \by}} \dx{\bu}},
 \end{equation}
 where $\I_A$ is the indicator function of a set $A$, $\A_{\epsilon, \by} = \left\{\bu \in \R^{d_y} : \rho(\bu, \by) \leq \epsilon \right\}$ and $\rho: \R^{d_y} \times \R^{d_y} \to \R$ is a metric, typically the Euclidean distance.
 
@@ -58,9 +60,9 @@ We now give a basic variant of a sampling-based approximation to $p^\epsilon(\bt
     \end{algorithmic}
 \end{algorithm}
 
-The algorithm iteratively samples parameters $\btheta^\prime$ from the prior, plugs them into the likelihood $p(\cdot \mid \btheta^\prime)$, and simulates pseudo-observations $\bu$. These are then compared to the true measurement $\by$ using the metric $\rho$. If the proposed parameter $\btheta^\prime$ gave rise to a pseudo-observation similar enough to the true $\by$ (i.e. $\bu \in \A_{\epsilon, \by}$), the parameter is kept under the assumption that the true data are likely under $\btheta^\prime$. The ABC approximation to the posterior $p^\epsilon(\btheta \mid \by)$ is then given in terms of the accepted samples $\btheta^{(1)}, \ldots, \btheta^{(M)}$ as the empirical distribution
+The algorithm iteratively samples parameters $\btheta^\prime$ from the prior, plugs them into the likelihood $p(\cdot \mid \btheta^\prime)$, and simulates pseudo-observations $\bu$. These are then compared to the true measurement $\by$ using the metric $\rho$. If the proposed parameter $\btheta^\prime$ gave rise to a pseudo-observation similar enough to the true $\by$ (i.e. $\bu \in \A_{\epsilon, \by}$), the parameter is kept under the assumption that the true data are likely under $\btheta^\prime$. The ABC approximation is then given in terms of the accepted samples $\btheta^{(1)}, \ldots, \btheta^{(M)}$ as the empirical distribution
 \begin{equation*}
-p^\epsilon(\btheta \mid \by) \approx \frac{1}{M} \sum_{i=1}^M \delta_{\btheta^{(i)}}(\btheta).
+p(\btheta \mid \by) \approx \frac{1}{M} \sum_{i=1}^M \delta_{\btheta^{(i)}}(\btheta).
 \end{equation*}
 
 Setting a low value of $\epsilon$ increases the approximation accuracy, at the cost of increased rejection rate. On the other hand, setting $\epsilon$ too large causes the algorithm to accept more often, but leads to simulating pseudo-measurements dissimilar to $\by$ and, in turn, incorrect $\btheta^{(i)}$. Setting a suitable value of $\epsilon$ is therefore the main difficulty when using ABC. Several approaches are discussed in \cite{jasra-filtering, jasra-time-series}. One particular way \citep{dedecius} is used in \autoref{sec:abc-ssm} in the context of SSMs.
@@ -70,12 +72,12 @@ There are many improvement to the basic ABC of \autoref{alg:abc-rejection}, disc
 \section{ABC in SSMs} \label{sec:abc-ssm}
 Next, we describe how exactly is the ABC methodology applied in the context of SSMs.
 
-\autoref{sec:abc-general} states that the typical use case of ABC arises in cases where we have knowledge about the data-generating process, but are unable to evaluate the probability of such data. In the context of SSMs, this translates into knowing how the observed values $\by_t$ have been generated from the latent states $\bx_t$, but being unable to evaluate the density $\obs_t(\by_t \mid \bx_t, \btheta)$. This prevents us from calculating the importance weights $w_t$ through the particle filter, which relies on the availability $\obs_t$.
+\autoref{sec:abc-general} states that the typical use case of ABC arises in cases where we have knowledge about the data-generating process, but are unable to evaluate the probability of such data. In the context of SSMs, this translates into knowing how the observed values $\by_t$ have been generated from the latent states $\bx_t$, but being unable to evaluate the density $\obs_t(\by_t \mid \bx_t, \btheta)$. This prevents us from calculating the importance weights $w_t$ through the particle filter, which relies on the availability of $\obs_t$.
 
 The papers \cite{tina-toni} and \cite{jasra-filtering} describe how a filter could be constructed using the ABC approximation. Additionally, \cite{jasra-time-series} applies this filter in the context of SSMs. We first discuss the construction of this filter. Afterwards, we address a particular limitation of this approach through kernel functions.
 
-\paragraph{ABC filter}
-In SSMs, the observations $\by_t$ are typically low-dimensional, often scalar quantities. It is then not necessary to consider any summary statistics. For simplicity, we also assume that $\rho$ is the Euclidean distance.
+\paragraph{Filter construction through ABC}
+In SSMs, the observations $\by_t$ are typically low-dimensional, often scalar quantities. It is then not necessary to consider any summary statistics.
 
 \cite{jasra-filtering} consider a modification of the particle filter (\autoref{alg:particle-filter}) which simulates pseudo-observations according to the observation model, and calculates the importance weights based on their closeness to the true measurements. The pseudocode is given in \autoref{alg:abc-filter}.
 
@@ -107,7 +109,7 @@ Analogously to \autoref{sec:particle-filter-estimate}, the weights are then used
 \begin{equation} \label{eq:abc-likelihood}
 \widehat{\aux} = \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N \frac{w_t^{(i)}}{\int_{\A_{\epsilon, \by_t}} \dx{\bu}}.
 \end{equation}
-The integral in the denominator essentially normalizes the weights $w_t^{(i)}$ to be equal to the probability density of $\mathcal{U}(\by_t; \epsilon)$, the uniform distribution in a sphere centered at $\by_t$ with radius $\epsilon$.
+The integral in the denominator essentially normalizes the weights $w_t^{(i)}$ to be equal to the probability density of $\mathcal{U}(\by_t; \epsilon)$, the uniform distribution in a sphere centered at $\by_t$ with radius $\epsilon$ given in terms of the metric $\rho$.
 
 \paragraph{Bias}
 The use of this ABC filter introduces bias to the parameter inference. Recall that in \autoref{sec:particle-filter-estimate}, we required $\widehat{\aux}$ to be an unbiased estimator of $p(\by_{1:T} \mid \btheta)$. This was the case when the weights were calculated according to $w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t) w_{t-1}^{(i)}$. This unbiasedness is not preserved here, since $\widehat{\aux}$ estimates
@@ -123,13 +125,13 @@ p^\epsilon(\by_{1:T} \mid \btheta) &= \int p^\epsilon(\bx_{0:T}, \by_{1:T} \mid 
 \end{equation*}
 similarly to \eqref{eq:abc-integral}. This essentially means that by plugging \eqref{eq:abc-likelihood} into the Metropolis-Hastings acceptance ratio, the limiting distribution of the underlying Markov chain becomes $p^\epsilon(\btheta \mid \by_{1:T}) \propto p^\epsilon(\by_{1:T} \mid \btheta) \pprior(\btheta)$, instead of the correct $p(\btheta \mid \by_{1:T})$. In general, this bias cannot be dealt with, and is a price to pay for using the incorrect observation model.
 
-An interesting way to address this deficiency has been proposed in \cite{noisy-abc1} and in \cite{noisy-abc2}. The authors note that one uses data $\by_{1:T}$ assumed to have been generated according to \eqref{eq:factorization}, $p(\by_{1:T} \mid \btheta)$, but fitting the ABC approximation $p^\epsilon(\by_{1:T} \mid \btheta)$. In an attempt to bring the data closer the model being really fitted, the authors use a sequence of perturbed observations $\bm{z}_t = \by_t + \bm{v}$, $\bm{v} \sim \mathcal{U}(\bm{0}; \epsilon)$ which denotes the uniform distribution in a sphere with radius $\epsilon$ centered at the origin. It is proved that if $\btheta$ is estimated according to maximum likelihood, the estimate is consistent when using the perturbed sequence $\bm{z}_{1:T}$.
+An interesting way to address this deficiency has been proposed in \cite{noisy-abc1} and in \cite{noisy-abc2}. The authors note that one uses data $\by_{1:T}$ assumed to have been generated according to \eqref{eq:factorization}, $p(\by_{1:T} \mid \btheta)$, but fitting the ABC approximation $p^\epsilon(\by_{1:T} \mid \btheta)$. In an attempt to bring the data closer the model being really fitted, the authors use a sequence of perturbed observations $\bm{z}_t = \by_t + \bm{v}$, $\bm{v} \sim \mathcal{U}(\bm{0}; \epsilon)$ which denotes the uniform distribution in a sphere given by $\rho$, with radius $\epsilon$ and centered at the origin. It is proved that if $\btheta$ is estimated according to maximum likelihood, the estimate is consistent when using the perturbed sequence $\bm{z}_{1:T}$.
 
 
 \paragraph{Use of kernel functions}
 A limitation of \autoref{alg:abc-rejection} and \autoref{alg:abc-filter} lies in the use of the indicator function $\I_{\A_{\epsilon, \by}}$. There are two problems:
 \begin{enumerate}
-    \item A practical one; it may happen that no samples are accepted, and the output is null in case of \autoref{alg:abc-rejection}, or too many weights become zero in case of \autoref{alg:abc-filter}.
+    \item A practical one; it may happen that no samples are accepted, and the output is null in case of \autoref{alg:abc-rejection}, or too many weights become zero in case of \autoref{alg:abc-filter}, and the filter collapses.
     \item A more fundamental one, the simulated pseudo-observations $\bu_t$ are all assigned equal weights, regardless of how far they lie from the true measurement $\by_t$. Intuitively, a pseudo-observation closer to the true $\by_t$ should be assigned a higher weight than one which is further away.
 \end{enumerate}
 Both issues can be mitigated by considering a general kernel function in place of the indicator $\I_{\A_{\epsilon, \by}}$. Let a kernel of width $\epsilon$ centered at $\by$ and evaluated at $\bu$ be denoted by $\kappa(\bu; \by, \epsilon)$. In machine learning, kernel functions are often taken \emph{proportional} to some symmetric probability density function \citep{elements}. However, as we aim to replace the indicator function $\I_{\A_{\epsilon, \by}}$ by such kernel, we require the kernel to be properly normalized (integrate to unity), to mirror the normalization in \eqref{eq:abc-likelihood}.
@@ -140,10 +142,11 @@ With such kernel function, we can then write $w_t^{(i)} \propto \kappa(\bu_t; \b
 \end{equation}
 due to the kernel having been normalized. This way, the weights are no longer uniformly set, but instead reflect the distance of $\bu_t$ from $\by_t$. There is also no risk of the filter collapsing due to majority of the weights becoming zero.
 
-Introducing the kernel function to the weights computation is in principle similar to using importance sampling rather than simple rejection sampling \citep{information-theory}. Instead of accepting/rejecting the generated samples based on whether they match some criterion or not, they are all accepted and weighted according to \emph{how well} they match the criterion.
+Introducing the kernel function to the weights computation is in principle similar to using importance sampling rather than simple rejection sampling \citep{information-theory}. Instead of accepting/rejecting the generated samples based on whether they match some criterion, they are all accepted and weighted according to \emph{how well} they match the criterion.
 
-Finally, we give several examples of commonly used kernel functions and comment on their usage.
-{\color{red} TODO: One-dimensional!}
+With the kernel functions in mind, we describe a procedure for automatic tuning of the kernel width $\epsilon$, which has been ignored thus far. The adopted method has been derived in a one-dimensional setting, i.e. $\bu, \by \in \R$. We thus denote $\by$ by $y$ and $\bu$ by $u$, them being scalar quantities. When considering multivariate observations, the kernels are applied coordinate-wise (assuming independence between the components of $\by$ or $\bu$, respectively).
+
+Before describing the kernel tuning procedure, we give several examples of commonly used kernel functions and comment on their usage.
 \begin{enumerate}
     \item \textbf{Gaussian kernel} The Gaussian kernel takes the form
     \begin{equation*}
@@ -159,13 +162,12 @@ Finally, we give several examples of commonly used kernel functions and comment 
     \item \textbf{Uniform kernel} The uniform kernel takes the form
     \begin{equation*}
     \kappa(u; y, \epsilon) = \begin{cases}
-    \frac{1}{2 \epsilon}, & y - \epsilon < u < u + \epsilon; \\
+    \frac{1}{2 \epsilon}, & y - \epsilon < u < y + \epsilon; \\
     0, & \text{otherwise}.
     \end{cases}
     \end{equation*}
     Using this kernel, we recover the standard ABC which accepts $u$ if $u \in \A_{\epsilon, y} = \left\{u : \left| u - y \right| < \epsilon \right\}$.
 \end{enumerate}
-\autoref{chap:applications} provides comparison of different kernel functions.
 
 
 \paragraph{Kernel width tuning}
