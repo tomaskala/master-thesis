@@ -1,12 +1,22 @@
-\documentclass[twoside,openright]{report}
+\documentclass[11pt,twoside,openright]{report}
 
 \usepackage[czech,english]{babel}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{kpfonts}
 \usepackage[utf8]{inputenc}
 \usepackage[a4paper,width=150mm,top=25mm,bottom=25mm]{geometry}
 \usepackage{graphicx}
 \graphicspath{ {images/} }
 
-\usepackage{lmodern}
+\usepackage{emptypage}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhead{}
+\fancyhead[RO,LE]{\leftmark}
+\fancyfoot{}
+\fancyfoot[C]{\thepage}
+
 \usepackage{epstopdf}
 
 \usepackage[nottoc]{tocbibind}
@@ -14,9 +24,8 @@
 
 \usepackage{float}
 
-\usepackage{bm}
 \usepackage{datetime}
-\usepackage{hyperref}
+\usepackage[pdftex,final]{hyperref}
 
 \usepackage{algorithm}
 \usepackage{algpseudocode}
@@ -35,6 +44,7 @@
 \usepackage{pdfpages}
 
 \usepackage{tikz}
+\usepackage{bm}
 
 \addto\extrasenglish{%
   \renewcommand{\chapterautorefname}{Chapter}%
