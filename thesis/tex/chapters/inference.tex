@@ -205,7 +205,7 @@ The estimator $\widehat{\Phi}$ converges to the true expectation $\Phi$ as $N \t
 
 
 \paragraph{Sequential importance sampling (SIS)}
-The SIS algorithm uses a set of weighted particles $\left\{\left(\bm{x}_t^{(i)}, w_t^{(i)} \right) : i = 1, \ldots, N \right\}$, to represent the filtering distribution $p(\bm{x}_t \mid \by_{1:t}, \btheta)$. To simplify notation, we write $w_t^{(i)}$ instead of $w_t(\bm{x}^{(i)})$ from now on. The empirical approximation to ${p(\bm{x}_t \mid \by_{1:t}, \btheta)}$ is then
+The SIS algorithm uses a set of weighted particles $\left\{\left(\bm{x}_t^{(i)}, w_t^{(i)} \right) : i = 1, \ldots, N \right\}$ to represent the filtering distribution $p(\bm{x}_t \mid \by_{1:t}, \btheta)$. To simplify notation, we write $w_t^{(i)}$ instead of $w_t(\bm{x}^{(i)})$ from now on. The empirical approximation to ${p(\bm{x}_t \mid \by_{1:t}, \btheta)}$ is then
 \begin{equation*}
 \widehat{p}(\bm{x}_t \mid \by_{1:t}, \btheta) = \frac{\sum_{i=1}^N w_t^{(i)} \delta_{\bm{x}_t^{(i)}}(\bm{x}_t)}{\sum_{i=1}^N w_t^{(i)}}.
 \end{equation*}

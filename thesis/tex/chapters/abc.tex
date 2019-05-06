@@ -157,7 +157,7 @@ Before describing the kernel tuning procedure, we give several examples of commo
     \begin{equation*}
     \kappa(u; y, \epsilon) = \frac{1}{\pi \epsilon \left[ 1 + \left(\frac{u - y}{\epsilon}\right)^2 \right]}.
     \end{equation*}
-    As opposed to the Gaussian distribution, the Cauchy distribution has heavier tails, and so it is suitable for situations with potential distant observations. This kernel typically assigns non-trivial probability even to distant pseudo-observations, and so the filter does not collapse.
+    As opposed to the Gaussian distribution, the Cauchy distribution has heavier tails, and so it is suitable for situations with potential distant observations. This kernel typically assigns non-trivial probability even to distant pseudo-observations, and so the filter does not collapse even under outliers.
     
     \item \textbf{Uniform kernel} The uniform kernel takes the form
     \begin{equation*}
@@ -166,7 +166,7 @@ Before describing the kernel tuning procedure, we give several examples of commo
     0, & \text{otherwise}.
     \end{cases}
     \end{equation*}
-    Using this kernel, we recover the standard ABC which accepts $u$ if $u \in \A_{\epsilon, y} = \left\{u : \left| u - y \right| < \epsilon \right\}$.
+    Using this kernel, we recover the standard ABC which accepts $u$ if $u \in \A_{\epsilon, y} = \left\{u : \left| u - y \right| < \epsilon \right\}$. If we are in a situation with multivariate observations $\by_t$ and apply the uniform kernel coordinate-wise, the set of accepted samples coincides with the standard ABC using $\rho(\bu, \by) = \max_{i=1}^{d_y} \left|u_i - y_i\right|$, the $L_\infty$ distance.
 \end{enumerate}
 
 
