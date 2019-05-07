@@ -187,9 +187,9 @@ is of interest. Assume that the integral is analytically intractable, and that o
 \begin{equation*}
 p(\bm{x}) = \frac{p^*(\bm{x})}{Z},
 \end{equation*}
-where $Z$ is an unknown normalizing constant, and $p^*$ can be evaluated. Such situation frequently arises in Bayesian statistics, where a posterior distribution of interest $p(\btheta \mid \bm{x}) = \frac{p(\bm{x} \mid \btheta) p(\btheta)}{\int p(\bm{x} \mid \btheta) p(\btheta) \; \dx{\btheta}}$ is given in terms of the Bayes theorem. The normalizing constant in the denominator is often unavailable in analytic form. However, the numerator can be evaluated.
+where $Z$ is an unknown normalizing constant, and $p^*$ can be evaluated. Such situation frequently arises in Bayesian statistics, where a posterior distribution of interest ${p(\btheta \mid \bm{x}) = \frac{p(\bm{x} \mid \btheta) p(\btheta)}{\int p(\bm{x} \mid \btheta) p(\btheta) \; \dx{\btheta}}}$ is given in terms of the Bayes theorem. The normalizing constant in the denominator is often unavailable in analytic form. However, the numerator can be evaluated.
 
-Next, we introduce a (typically simpler) distribution with probability density $q(\bm{x}) = \frac{q^*(\bm{x})}{Z_Q}$ such that
+Next, we introduce a (typically simpler) distribution with density $q(\bm{x}) = \frac{q^*(\bm{x})}{Z_Q}$ such that
 \begin{enumerate}
     \item One can sample from $q$;
     \item One can evaluate $q^*$;
@@ -321,7 +321,7 @@ The particle filter is summarized in \autoref{alg:particle-filter}.
         \EndFor
     \end{algorithmic}
 \end{algorithm}
-The algorithm is called \emph{bootstrap} particle filter, due to resemblance of the resampling step to the non-parametric bootstrap \citep{bootstrap}.
+The algorithm is called \emph{bootstrap} particle filter, due to resemblance of the resampling step to the non-parametric bootstrap \citep{bootstrap}. By being defined in terms of importance sampling, the algorithm inherits the appealing asymptotic properties.
 
 
 
