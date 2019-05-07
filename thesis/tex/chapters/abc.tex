@@ -125,7 +125,7 @@ p^\epsilon(\by_{1:T} \mid \btheta) &= \int p^\epsilon(\bx_{0:T}, \by_{1:T} \mid 
 \end{equation*}
 similarly to \eqref{eq:abc-integral}. This essentially means that by plugging \eqref{eq:abc-likelihood} into the Metropolis-Hastings acceptance ratio, the limiting distribution of the underlying Markov chain becomes $p^\epsilon(\btheta \mid \by_{1:T}) \propto p^\epsilon(\by_{1:T} \mid \btheta) \pprior(\btheta)$, instead of the correct $p(\btheta \mid \by_{1:T})$. In general, this bias cannot be dealt with, and is a price to pay for using the incorrect observation model.
 
-An interesting way to address this deficiency has been proposed in \cite{noisy-abc1} and in \cite{noisy-abc2}. The authors note that one uses data $\by_{1:T}$ assumed to have been generated according to \eqref{eq:factorization}, $p(\by_{1:T} \mid \btheta)$, but fitting the ABC approximation $p^\epsilon(\by_{1:T} \mid \btheta)$. In an attempt to bring the data closer the model being really fitted, the authors use a sequence of perturbed observations $\bm{z}_t = \by_t + \bm{v}$, $\bm{v} \sim \mathcal{U}(\bm{0}; \epsilon)$ which denotes the uniform distribution in a sphere given by $\rho$, with radius $\epsilon$ and centered at the origin. It is proved that if $\btheta$ is estimated according to maximum likelihood, the estimate is consistent when using the perturbed sequence $\bm{z}_{1:T}$.
+An interesting way to address this deficiency has been proposed in \cite{noisy-abc1} and in \cite{noisy-abc2}. The authors note that one uses data $\by_{1:T}$ assumed to have been generated according to \eqref{eq:factorization}, $p(\by_{1:T} \mid \btheta)$, but fitting the ABC approximation $p^\epsilon(\by_{1:T} \mid \btheta)$. In an attempt to bring the data closer the model being really fitted, the authors use a sequence of perturbed observations $\bm{z}_t = \by_t + \bm{v}$, $\bm{v} \sim \mathcal{U}(\bm{0}; \epsilon)$ which denotes the uniform distribution in a sphere given by $\rho$, with radius $\epsilon$ and centered at the origin. It is proved that if $\btheta$ is estimated according to maximum likelihood, the estimate is consistent when using the perturbed sequence $\bm{z}_{1:T}$. This approach is called the Noisy ABC.
 
 
 \paragraph{Use of kernel functions}
@@ -146,7 +146,7 @@ Introducing the kernel function to the weights computation is in principle simil
 
 With the kernel functions in mind, we describe a procedure for automatic tuning of the kernel width $\epsilon$, which has been ignored thus far. The adopted method has been derived in a one-dimensional setting, i.e. $\bu, \by \in \R$. We thus denote $\by$ by $y$ and $\bu$ by $u$, them being scalar quantities. When considering multivariate observations, the kernels are applied coordinate-wise (assuming independence between the components of $\by$ or $\bu$, respectively).
 
-Before describing the kernel tuning procedure, we give several examples of commonly used kernel functions and comment on their usage.
+Before describing the kernel tuning procedure, we give several examples of commonly used kernel functions and comment on their usage. The kernels are shown in \autoref{fig:kernels}.
 \begin{enumerate}
     \item \textbf{Gaussian kernel} The Gaussian kernel takes the form
     \begin{equation*}
@@ -169,9 +169,51 @@ Before describing the kernel tuning procedure, we give several examples of commo
     Using this kernel, we recover the standard ABC which accepts $u$ if $u \in \A_{\epsilon, y} = \left\{u : \left| u - y \right| < \epsilon \right\}$. If we are in a situation with multivariate observations $\by_t$ and apply the uniform kernel coordinate-wise, the set of accepted samples coincides with the standard ABC using $\rho(\bu, \by) = \max_{i=1}^{d_y} \left|u_i - y_i\right|$, the $L_\infty$ distance.
 \end{enumerate}
 
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{kernels}
+    \caption{The Gaussian, Cauchy and uniform kernel functions centered at $y = 0$ with width $\epsilon = 3$.}
+    \label{fig:kernels}
+\end{figure}
+
+
+The Noisy ABC procedure described above is then naturally generalized by perturbing the observations by samples from a given kernel, instead of the uniform distribution in a ball.
+
 
 \paragraph{Kernel width tuning}
 In this paragraph, we address the issue of tuning the kernel width $\epsilon$. Since the previous section has shown that the indicator function $\I_{\A_{\epsilon, \by}}$ is recovered by a particular kernel, the method also applies to the standard ABC formulation.
 
+A careful setting of $\epsilon$ is necessary. When the kernel width is too low, most of the $N$ generated pseudo-observations are assigned with low probabilities, and the importance weights are close to zero. On the other hand, when the width is too high, even outlying pseudo-observations are assigned a non-trivial probability and shift the filter to incorrect values. In addition, the kernel becomes flat and close to the uniform variant. A manual setting of $\epsilon$ is thus a non-obvious task without any guidelines in the data. Additionally, the width should somehow reflect the filter evolution over time, since all observations $\by_t$ are different and may require different kernel widths.
+
+In this thesis, we adopt a procedure described in \cite{dedecius}, which is briefly reviewed below. More details can be found in the original paper.
+
+The method is based on the idea that the true observation model $\obs_t$ should cover a given number of generated pseudo-observations $\bu_t^{(i)}, i = 1, \ldots, N$ by a $100p\%$ high probability region ($p$-HPR), where $p \in \left(0, 1\right)$ is a given constant. If this is true, the pseudo-observations can be expected to describe the distribution $\obs_t$ sufficiently-well. As this distribution is not known, it is approximated by the kernel $\kappa$ evaluated at $\bu_t^{(i)}, i = 1, \ldots, N$.
+
+As given in \eqref{eq:abc-likelihood-kernel}, the kernel is evaluated at each pseudo-observation $\bu_t^{(i)}, i = 1, \ldots, N$ while centered at $\by_t$. We then need to tune the width at time $t$, denoted $\epsilon_t$, so that a given fraction $\displaystyle \frac{\alpha}{N}$ pseudo-observations is covered by the $p$-HPR of the kernel. For the procedure to work, the kernel function $\kappa$ must be invariant under translation and scaling, i.e. belong to the location-scale family of distributions. Many popular kernels, including the three discussed above, belong to this family.
+
+The tuning procedure involves two steps:
+\begin{enumerate}
+    \item Identify $u_t^{[\alpha]}$, the $\alpha$th closest pseudo-observation to $y_t$.
+    \item Center the kernel $\kappa$ at $y_t$ and set the width $\epsilon_t$ so that
+    \begin{equation} \label{eq:kernel-tuning-integral}
+    \left| \int_{y_t}^{u_t^{[\alpha]}} \kappa(u_t; y_t, \epsilon_t) \; \dx{u_t} \right| = \frac{p}{2},
+    \end{equation}
+    meaning that $u_t^{[\alpha]}$ lies at the boundary of the $p$-HPR of $\kappa(\cdot; y_t, \epsilon_t)$.
+\end{enumerate}
+In case of multidimensional $\by_t$ and $\bu_t$, this procedure is performed coordinate-wise.
+
+Equation \eqref{eq:kernel-tuning-integral} states that $u_t^{[\alpha]}$ is either the $\frac{1-p}{2}$-quantile or the $\frac{1+p}{2}$-quantile of $\kappa(\cdot; y_t, \epsilon_t)$, depending on whether $u_t^{[\alpha]} \leq y_t$ or $u_t^{[\alpha]} \geq y_t$. If we restrict ourselves to symmetric kernels, we may get rid of this case division by exploiting kernel symmetry.
+
+Let $F$ denote the cumulative distribution function of the kernel $\kappa(\cdot; 0, 1)$ centered at 0 with width $\epsilon = 1$. Let its quantile function be denoted by $F^{-1}$. From $\kappa$ belonging to the location-scale family, we get that the quantile function of a general kernel $\kappa(\cdot; y_t, \epsilon_t)$ is
+\begin{equation} \label{eq:location-scale-quantile}
+Q(\beta) = y_t + \epsilon_t F^{-1}(\beta), \quad \beta \in \left(0, 1\right).
+\end{equation}
+As \eqref{eq:kernel-tuning-integral} and the assumed kernel symmetry require $\left| u_t^{[\alpha]} \right|$ to be the $\frac{1+p}{2}$-quantile of $\kappa(\cdot; y_t, \epsilon_t)$, we can substitute $u_t^{[\alpha]}$ for $Q(\beta)$ in \eqref{eq:location-scale-quantile} and solve for $\epsilon_t$, obtaining
+\begin{equation} \label{eq:kernel-tuning}
+\epsilon_t = \frac{\left| u_t^{[\alpha]} - y_t \right|}{F^{-1}(\frac{1+p}{2})},
+\end{equation}
+where the absolute value comes from the kernel being symmetric, so it is irrelevant whether we consider pseudo-observations lower or greater than the true observation $y_t$. The quantile function $F^{-1}$ is uniquely associated with each kernel, and the only free parameters are $\alpha$ and $p$.
+
 
 \section{Likelihood estimate through ABC} \label{sec:abcmh}
+To conclude this chapter, we summarize the entire inference about $\btheta$ in the model \eqref{eq:factorization} when ABC is used to estimate the likelihood, as given in \autoref{eq:abc-likelihood-kernel}.
