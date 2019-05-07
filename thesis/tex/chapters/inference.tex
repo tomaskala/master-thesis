@@ -136,9 +136,13 @@ where $\delta$ denotes the Dirac distribution. This estimate can be additionally
 \paragraph{Metropolis-Hastings algorithm}
 The Metropolis-Hastings algorithm is described in \autoref{alg:metropolis-hastings}. Although well-known, it is included for comparison with the variant employing the particle filter, introduced in \autoref{alg:marginal-metropolis-hastings}.
 
-The target distribution is the parameter posterior $p(\btheta \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pprior(\btheta)$. In this case, it is not necessary to evaluate the normalizing constant, since it gets cancelled out.
+The algorithm constructs a Markov chain on the variable $\btheta$, whose transition distribution $q$ is called the proposal distribution in this context. Starting at an initial state $\btheta_0$, candidate states $\btheta^\prime$ are iteratively sampled according to $q(\cdot \mid \btheta)$, where $\btheta$ is the current state of the chain.
 
-The algorithm further requires a proposal distribution $\prop$. Similarly to the prior $\pprior$, it is problem-dependent, and must be selected carefully.
+We then calculate the acceptance probability $\alpha$ in \eqref{eq:acceptance-probability}, which considers which of the two states $\btheta$ and $\btheta^\prime$ is more probable under the target distribution ${p(\cdot \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pprior(\btheta)}$. Additionally, it allows the chain to ``step back'' and not move to the new state $\btheta^\prime$ by comparing the probability of the two states under $q$, but in reverse direction. With probability $\alpha$, the Markov chain then evolves into $\btheta^\prime$; otherwise, it remains in the current state.
+
+It can be shown \citep{robert-casella} that the distribution $p(\btheta \mid \by_{1:T})$ is the limiting distribution of such Markov chain. This means that with the number of transitions going to infinity, the sampled $\btheta$ are distributed according to our target distribution $p(\btheta \mid \by_{1:T})$. To approximately reach this limiting distribution, a number of initial samples (called the burn-in period) is often discarded. In addition, one usually wants independent samples from the target distribution, which the samples from a Markov chain are \emph{not}. In practice, only samples with a given spacing are kept to ensure their approximate independence.
+
+Similarly to the prior $\pprior$, setting the proposal $q$ is problem-dependent, and both distributions must be selected carefully. Diagnosing converge of the sampler is a notably difficult task, and one usually resorts to graphical tools to determine whether the sampled values have stabilized. Some such plots are given in \autoref{chap:applications}.
 
 \begin{algorithm}[ht]
     \caption{Metropolis-Hastings}
@@ -165,7 +169,7 @@ The algorithm further requires a proposal distribution $\prop$. Similarly to the
     \end{algorithmic}
 \end{algorithm}
 
-We see that the acceptance probability \eqref{eq:acceptance-probability} cannot be calculated, as it depends on the intractable likelihood $p(\by_{1:T} \mid \btheta)$. In \autoref{sec:particle-filter-estimate}, we give a modified variant of the Metropolis-Hastings algorithm, where the likelihood is approximated using the particle filter. The derivation of this filter is the content of the next section.
+From \autoref{alg:metropolis-hastings}, we see that the acceptance probability \eqref{eq:acceptance-probability} cannot be calculated, as it depends on the intractable likelihood $p(\by_{1:T} \mid \btheta)$. In \autoref{sec:particle-filter-estimate}, we give a modified variant of the Metropolis-Hastings algorithm, where the likelihood is approximated using the particle filter. The derivation of this filter is the content of the next section.
 
 
 
