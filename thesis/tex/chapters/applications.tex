@@ -1,8 +1,65 @@
 \chapter{Applications}
 \label{chap:applications}
 
-\section{Preliminary: the Gillespie algorithm}
+In this chapter, we apply the models developed earlier to two selected problems. The first problem is the Lotka-Volterra model described in \autoref{sec:lotka-volterra}, the second is a simple model for auto-regulation in prokaryotes considered in \autoref{sec:autoregulation}. The particle filter-based approach is compared with the one depending on ABC methods in various settings and model misspecifications.
 
-\section{Lotka-Volterra model}
+Both problems require simulating reactions in order to propagate the system states through time. This is done with the help of the Gillespie algorithm, which is first described in \autoref{sec:gillespie}.
 
-\section{Prokaryotic auto-regulation model}
+\section{Preliminary: the Gillespie algorithm} \label{sec:gillespie}
+The Gillespie algorithm \citep{gillespie1, gillespie2} is used to simulate a stochastic process describing the time evolution of a system of reactions. The discussion given here follows \citep{wilkinson-book}.
+
+\paragraph{Time evolution of a reaction system}
+Consider a system consisting of $u$ species $\mathcal{X}_1, \ldots, \mathcal{X}_u$ and $v$ reactions $\mathcal{R}_1, \ldots, \mathcal{R}_v$. The species can describe literal animal species, as is the case in the Lotka-Volterra model in \autoref{sec:lotka-volterra}, or individual molecule types, as in \autoref{sec:autoregulation}. The reactions describe the interactions between these species through time.
+
+Let the number of molecules (or individuals, in case of animal species) of the species $\mathcal{X}_i$ at time $t$ be denoted by $X_{i,t}$, and let $\bm{X}_t = \left(X_{1,t}, \ldots, X_{u,t}\right)^T$. Additionally, let the number of reactions of type $\mathcal{R}_i$ which occurred in a time window $(0, t]$ be denoted by $R_{i,t}$, and let $\bm{R}_t = \left(R_{1,t}, \ldots,R_{v,t}\right)^T$. The evolution of the system from time 0 to time $t$ is described by the equation
+\begin{equation} \label{eq:system-evolution}
+\bm{X}_t - \bm{X}_0 = \mathbb{S}\bm{R}_t,
+\end{equation}
+where $\mathbb{S} \in \R^{u \times v}$ is called the stoichiometry matrix of the system, and describes the difference in the number of molecules of each species after each reaction occurs. To gain insight into the meaning of $\mathbb{S}$, it is instructive to write it as
+\begin{equation*}
+\mathbb{S} = \mathbb{P}_\text{post} - \mathbb{P}_\text{pre},
+\end{equation*}
+where the element $(i,j)$ of $\mathbb{P}_\text{pre}$ denotes the number of molecules of $\mathcal{X}_i$ before a reaction of type $\mathcal{R}_j$ takes place, and the element $(i,j)$ of $\mathbb{P}_\text{post}$ describes the same quantity \emph{after} it takes place. Equation \eqref{eq:system-evolution} can then be written as
+\begin{equation*}
+\bm{X}_t = \bm{X}_0 + \left(\mathbb{P}_\text{post} - \mathbb{P}_\text{pre}\right) \bm{R}_t,
+\end{equation*}
+and describes the net gain in the number of molecules of each species, given their initial numbers, and accounting for their increase/decrease when a number of reactions of each type occurs.
+
+In addition, each reaction $\mathcal{R}_i$ has a stochastic rate constant $c_i$ and a rate law (also called the hazard function) $h_i(\bm{X}_t, c_i)$ associated with it. The interpretation of the hazard function is such that $h_i(\bm{X}_t, c_i) \dx{t}$ is the probability of a reaction of type $\mathcal{R}_i$ occurring in a time interval $(t, t + \dx{t}]$, conditionally on the system being in state $\bm{X}_t$. Such a situation is described by an exponential distribution -- the time to the event of a reaction of type $\mathcal{R}_i$ occurring, assuming no other reaction is taking place, is distributed according to ${\mathcal{E}\mathit{xp}(h_i(\bm{X}_t, c_i))}$. This is however a convenient simplification, since multiple reactions are typically occurring at the same time.
+
+\paragraph{The Gillespie algorithm}
+In a system with $v$ reactions and their hazard functions $h_i(\bm{X}_t, c_i)$, the hazard of \emph{some} reaction occurring is
+\begin{equation*}
+h_0(\bm{X}_t, \bm{c}) = \sum_{i=0}^v h_i(\bm{X}_t, c_i),
+\end{equation*}
+where $\bm{c} = \left(c_1, \ldots, c_v\right)$. The time to the next reaction is then distributed according to $\mathcal{E}\mathit{xp}(h_0(\bm{X}_t, \bm{c}))$. The particular reaction type is a random variable with a categorical distribution $\mathcal{C}\mathit{at}(\widetilde{h}_1(\bm{X}_t,c_1), \ldots, \widetilde{h}_v(\bm{X}_t,c_v))$, where $\displaystyle \widetilde{h}_i(\bm{X}_t,c_i) = \frac{h_i(\bm{X}_t,c_i)}{h_0(\bm{X}_t, \bm{c})}$.
+
+With the above in mind, the Gillespie algorithm can now be formulated, and is given in \autoref{alg:gillespie}. Its purpose is to simulate the state evolution \eqref{eq:system-evolution} for a given time horizon $T$ while accounting for the randomness in the time until a reaction of a particular type takes place. For the purpose of this algorithm, denote the columns of the stoichiometry matrix $\mathbb{S}$ by $\bm{S}^i, \quad i = 1, \ldots, v$.
+\begin{algorithm}[ht]
+    \caption{Gillespie algorithm}
+    \label{alg:gillespie}
+    \begin{algorithmic}[1]
+        \Input $\text{Time horizon } T, \text{ rate constants } \bm{c} = \left(c_1, \ldots, c_v\right),\ \newline \text{initial molecule numbers } \bm{X}_0 = \left(X_{1,0}, \ldots, X_{u,0} \right).$
+        
+        \State $t \gets 0$
+        
+        \State $\bm{X}_t \gets \bm{X}_0$
+        
+        \While{$t \leq T$}
+            \State $\text{Calculate } h_i(\bm{X}_t, c_i), \quad i = 1, \ldots, v.$
+            \State $h_0(\bm{X}_t, \bm{c}) \gets \sum_{i=1}^v h_i(\bm{X}_t, c_i)$
+            \State $\text{Calculate } \displaystyle \widetilde{h}_i(\bm{X}_t,c_i) = \frac{h_i(\bm{X}_t,c_i)}{h_0(\bm{X}_t, \bm{c})}, \quad i = 1, \ldots, v.$
+            \State $\text{Sample } \dx{t} \sim \mathcal{E}\mathit{xp}(h_0(\bm{X}_t, \bm{c})).$ \Comment{Simulate the time to the next reaction.}
+            \State $\text{Sample } j \sim \mathcal{C}\mathit{at}(\widetilde{h}_1(\bm{X}_t,c_1), \ldots, \widetilde{h}_v(\bm{X}_t,c_v)).$ \Comment{Simulate the reaction type.}
+            \State $\bm{X}_{t + \dx{t}} \gets \bm{X}_t + \bm{S}^j$ \Comment{Update the state according to the reaction $j$.}
+            \State $t \gets t + \dx{t}$
+        \EndWhile
+        
+        \Output $\text{Final state } \bm{X}_t, \text {final time } t.$
+    \end{algorithmic}
+\end{algorithm}
+The algorithm us usually the bottleneck of most simulations, and must be implemented carefully. Otherwise, the simulation becomes unacceptably slow. The final time $t$ is output as well, since it may exceed the horizon $T$. If the Gillespie algorithm is run consecutively during a simulation, the interest is to follow the previous run by starting at its final time $t$.
+
+\section{Lotka-Volterra model} \label{sec:lotka-volterra}
+
+\section{Prokaryotic auto-regulation model} \label{sec:autoregulation}
