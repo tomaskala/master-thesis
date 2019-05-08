@@ -11,8 +11,6 @@ s = 200
 
 def kernel_comparison():
     fig = plt.figure()
-    plt.xlabel('u')
-    plt.ylabel('Kernel value')
 
     loc = 0.0
     scale = 3.0
@@ -24,6 +22,8 @@ def kernel_comparison():
 
     plt.legend()
     plt.title('Kernel comparison')
+    plt.xticks([loc], ['y'])
+    plt.yticks([])
     plt.show()
 
 
@@ -50,13 +50,13 @@ def kernel_tuning():
     plt.fill_between(shaded_x, stats.norm.pdf(shaded_x, loc=y, scale=eps), color='darkblue', alpha=0.35, linewidth=0)
 
     plt.xticks([y, u_alpha], ['$y_t$', r'$u_t^{[\alpha]}$'])
-    plt.ylabel('Kernel value')
+    plt.yticks([])
     plt.title('Kernel tuning')
     plt.show()
 
 
 
 if __name__ == '__main__':
-    kernel_comparison()
-    #kernel_tuning()
+    #kernel_comparison()
+    kernel_tuning()
 
