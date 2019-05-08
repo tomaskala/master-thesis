@@ -39,7 +39,7 @@ With the above in mind, the Gillespie algorithm can now be formulated, and is gi
     \caption{Gillespie algorithm}
     \label{alg:gillespie}
     \begin{algorithmic}[1]
-        \Input $\text{Time horizon } T, \text{ rate constants } \bm{c} = \left(c_1, \ldots, c_v\right),\ \newline \text{initial molecule numbers } \bm{X}_0 = \left(X_{1,0}, \ldots, X_{u,0} \right).$
+        \Input $\text{Time horizon } T, \text{ rate constants } \bm{c} = \left(c_1, \ldots, c_v\right),\ \text{initial molecule numbers } \bm{X}_0.$
         
         \State $t \gets 0$
         
@@ -50,15 +50,15 @@ With the above in mind, the Gillespie algorithm can now be formulated, and is gi
             \State $h_0(\bm{X}_t, \bm{c}) \gets \sum_{i=1}^v h_i(\bm{X}_t, c_i)$
             \State $\text{Calculate } \displaystyle \widetilde{h}_i(\bm{X}_t,c_i) = \frac{h_i(\bm{X}_t,c_i)}{h_0(\bm{X}_t, \bm{c})}, \quad i = 1, \ldots, v.$
             \State $\text{Sample } \dx{t} \sim \mathcal{E}\mathit{xp}(h_0(\bm{X}_t, \bm{c})).$ \Comment{Simulate the time to the next reaction.}
-            \State $\text{Sample } j \sim \mathcal{C}\mathit{at}(\widetilde{h}_1(\bm{X}_t,c_1), \ldots, \widetilde{h}_v(\bm{X}_t,c_v)).$ \Comment{Simulate the reaction type.}
-            \State $\bm{X}_{t + \dx{t}} \gets \bm{X}_t + \bm{S}^j$ \Comment{Update the state according to the reaction $j$.}
+            \State $\text{Sample } i \sim \mathcal{C}\mathit{at}(\widetilde{h}_1(\bm{X}_t,c_1), \ldots, \widetilde{h}_v(\bm{X}_t,c_v)).$ \Comment{Simulate the reaction type.}
+            \State $\bm{X}_{t + \dx{t}} \gets \bm{X}_t + \bm{S}^i$ \Comment{Update the state according to the reaction $i$.}
             \State $t \gets t + \dx{t}$
         \EndWhile
         
-        \Output $\text{Final state } \bm{X}_t, \text {final time } t.$
+        \Output $\text{Final state } \bm{X}_t, \text { final time } t.$
     \end{algorithmic}
 \end{algorithm}
-The algorithm us usually the bottleneck of most simulations, and must be implemented carefully. Otherwise, the simulation becomes unacceptably slow. The final time $t$ is output as well, since it may exceed the horizon $T$. If the Gillespie algorithm is run consecutively during a simulation, the interest is to follow the previous run by starting at its final time $t$.
+The algorithm us usually the bottleneck of most simulations, and must be implemented carefully; otherwise, the simulation becomes unacceptably slow. The final time $t$ is at the output as well, since it may exceed the horizon $T$. If the algorithm is run consecutively during a simulation, the interest is to follow the previous run by starting at its final time $t$.
 
 \section{Lotka-Volterra model} \label{sec:lotka-volterra}
 
