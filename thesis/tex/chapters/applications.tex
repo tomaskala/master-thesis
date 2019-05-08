@@ -6,7 +6,7 @@ In this chapter, we apply the models developed earlier to two selected problems.
 Both problems require simulating reactions in order to propagate the system states through time. This is done with the help of the Gillespie algorithm, which is first described in \autoref{sec:gillespie}.
 
 \section{Preliminary: the Gillespie algorithm} \label{sec:gillespie}
-The Gillespie algorithm \citep{gillespie1, gillespie2} is used to simulate a stochastic process describing the time evolution of a system of reactions. The discussion given here follows \citep{wilkinson-book}.
+The Gillespie algorithm \citep{gillespie1, gillespie2} is used to simulate a stochastic process describing the time evolution of a system of reactions. The discussion given here follows \cite{wilkinson-book}.
 
 \paragraph{Time evolution of a reaction system}
 Consider a system consisting of $u$ species $\mathcal{X}_1, \ldots, \mathcal{X}_u$ and $v$ reactions $\mathcal{R}_1, \ldots, \mathcal{R}_v$. The species can describe literal animal species, as is the case in the Lotka-Volterra model in \autoref{sec:lotka-volterra}, or individual molecule types, as in \autoref{sec:autoregulation}. The reactions describe the interactions between these species through time.
