@@ -9,7 +9,7 @@ In the previous chapter, we have derived a way to bypass the likelihood function
 
 In practice, one may not have access to a correct observation model in the form of a probability density $\obs_t$. Instead, only a model of the process which generates an observation $\by_t$ from the latent state $\bx_t$ may be available. This generative process may take the form of a differential equation, chemical reaction, simulation, etc. One is then in possession of a mean to generate an observation, but not to evaluate how probable it is. By attempting to fit an arbitrary probability distribution to this generative model, an error is necessarily introduced. The particle filter weights might then not reflect reality, and would lead to incorrect results when using such misspecified model for $\obs_t$.
 
-Instead, we can utilize our knowledge of the generative process $\bx_t \mapsto \by_t$ to simulate a number of pseudo-observations $\bu_t$, and use them to approximate the likelihood $p(\by_{1:T} \mid \btheta)$. Then, we need not evaluate $\obs_t$, and so inference can proceed even without knowing the observation model density. This is exactly the idea behind the approximate Bayesian computation methodology, and is discussed in more detail in the next section.
+Instead, we can utilize our knowledge of the generative process $\bx_t \mapsto \by_t$ to simulate a number of pseudo-observations $\bu_t$, and use them to approximate the likelihood ${p(\by_{1:T} \mid \btheta)}$. Then, we need not evaluate $\obs_t$, and so inference can proceed even without knowing the observation model density. This is exactly the idea behind the approximate Bayesian computation methodology, and is discussed in more detail in the next section.
 
 Unfortunately, such approximation comes with a price. In \autoref{chap:inference}, it has been shown that using the particle filter does not introduce any approximation error, since the likelihood estimate is unbiased, and leaves the limiting distribution of the Metropolis-Hastings Markov chain intact. This is not the case when applying ABC methods, and is addressed in \autoref{sec:abc-ssm}.
 
@@ -26,13 +26,13 @@ In its classical formulation, ABC provides a way to approximate an intractable p
 \begin{equation} \label{eq:abc-integral}
 p(\btheta \mid \by) \approx p^\epsilon(\btheta \mid \by) = \frac{\int \I_{\A_{\epsilon, \by}}(\bu) p(\bu \mid \btheta) \pprior(\btheta) \; \dx{\bu}}{\int_{\A_{\epsilon, \by}} \dx{\bu}},
 \end{equation}
-where $\I_A$ is the indicator function of a set $A$, $\A_{\epsilon, \by} = \left\{\bu \in \R^{d_y} : \rho(\bu, \by) \leq \epsilon \right\}$ and $\rho: \R^{d_y} \times \R^{d_y} \to \R$ is a metric, typically the Euclidean distance.
+where $\I_{\A_{\epsilon, \by}}$ is the indicator function of a set $\A_{\epsilon, \by} = \left\{\bu \in \R^{d_y} : \rho(\bu, \by) \leq \epsilon \right\}$ and ${\rho: \R^{d_y} \times \R^{d_y} \to \R}$ is a metric, typically the Euclidean distance.
 
 The motivation behind \eqref{eq:abc-integral} is that such integral can be approximated by randomly sampling from the likelihood $p(\cdot \mid \btheta)$ without needing to evaluate it. This way, the likelihood can exist only conceptually, and we are able to simulate samples $\bu$ from a model reflecting some real-world process, without considering the underlying probability density.
 
 The hyper-parameter $\epsilon \geq 0$ controls how far can the auxiliary variable $\bu$ be from the true measurement $\by$ for them to be considered similar. Clearly, if we set $\epsilon = 0$, the integral becomes $p(\by \mid \btheta) \pprior(\btheta)$, and we recover the true posterior. In general, the smaller $\epsilon$, the better approximation is obtained, though at the cost of increased computational complexity, discussed in the next paragraph.
 
-To avoid the curse of dimensionality, a summary statistic $\bm{s}: \R^{d_y} \to \R^p$ where $1 \leq p < d_y$ is often introduced. Instead of comparing $\rho(\bu, \by) \leq \epsilon$, one then compares $\rho(\bm{s}(\bu), \bm{s}(\by)) \leq \epsilon$ (assuming that the metric has been redefined to $\rho: \R^p \times \R^p \to \R$).
+To avoid the curse of dimensionality, a summary statistic $\bm{s}: \R^{d_y} \to \R^p$, $1 \leq p < d_y$ is often introduced. Instead of comparing $\rho(\bu, \by) \leq \epsilon$, one then compares $\rho(\bm{s}(\bu), \bm{s}(\by)) \leq \epsilon$ (assuming that the metric has been redefined to $\rho: \R^p \times \R^p \to \R$).
 
 It can be shown that if $\bm{s}$ is a sufficient statistic for the parameter $\btheta$, the probability density $p^\epsilon(\btheta \mid \by)$ converges to $p(\btheta \mid \by)$ as $\epsilon \to 0$ \citep{jasra-time-series}. However, it is typically impossible to find such statistic outside of the exponential family of distributions. Otherwise, using a statistic that is not sufficient introduces an additional approximation error.
 
@@ -103,7 +103,7 @@ In SSMs, the observations $\by_t$ are typically low-dimensional, often scalar qu
     \end{algorithmic}
 \end{algorithm}
 
-The algorithm proceeds similarly to \autoref{alg:particle-filter} except for the way the weights are computed. Instead of evaluating the unavailable density $\obs_t$ at the true observation $\by_t$, a pseudo-observation $\bu_t$ is simulated. The weight is then set to a non-zero constant if $\bu_t \in \A_{\epsilon, \by_t}$, and 0 otherwise. It may seem that the weights for the same particle $i$ necessarily collapse to 0 after a number of time steps due to the recursive multiplication in step 6. However, step 7 resets the weights uniformly after resampling, so such collapse does not occur.
+The algorithm proceeds similarly to \autoref{alg:particle-filter} except for the way the weights are computed. Instead of evaluating the unavailable density $\obs_t$ at the true observation $\by_t$, a pseudo-observation $\bu_t$ is simulated. The weight is then set to a non-zero value if ${\bu_t \in \A_{\epsilon, \by_t}}$, and 0 otherwise. It may seem that the weights for the same particle $i$ necessarily collapse to 0 after a number of time steps due to the recursive multiplication in step 6. However, step 7 resets the weights uniformly after resampling, so such collapse does not occur.
 
 Analogously to \autoref{sec:particle-filter-estimate}, the weights are then used to approximate the likelihood $p(\by_{1:T} \mid \btheta)$. According to \cite{jasra-time-series}, the estimate is given by
 \begin{equation} \label{eq:abc-likelihood}
@@ -142,7 +142,7 @@ With such kernel function, we can then write $w_t^{(i)} \propto \kappa(\bu_t; \b
 \end{equation}
 due to the kernel having been normalized. This way, the weights are no longer uniformly set, but instead reflect the distance of $\bu_t$ from $\by_t$. There is also no risk of the filter collapsing due to majority of the weights becoming zero.
 
-Introducing the kernel function to the weights computation is in principle similar to using importance sampling rather than simple rejection sampling \citep{information-theory}. Instead of accepting/rejecting the generated samples based on whether they match some criterion, they are all accepted and weighted according to \emph{how well} they match the criterion.
+Introducing the kernel function to the weights computation is in principle similar to using importance sampling rather than simple rejection sampling \citep{information-theory}. Instead of accepting/rejecting the generated samples based on whether they match some criterion, they are all accepted, and weighted according to \emph{how well} they match it.
 
 With the kernel functions in mind, we describe a procedure for automatic tuning of the kernel width $\epsilon$, which has been ignored thus far. The adopted method has been derived in a one-dimensional setting, i.e. $\bu, \by \in \R$. We thus denote $\by$ by $y$ and $\bu$ by $u$, them being scalar quantities. When considering multivariate observations, the kernels are applied coordinate-wise (assuming independence between the components of $\by$ or $\bu$, respectively).
 

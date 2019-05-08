@@ -189,7 +189,7 @@ p(\bm{x}) = \frac{p^*(\bm{x})}{Z},
 \end{equation*}
 where $Z$ is an unknown normalizing constant, and $p^*$ can be evaluated. Such situation frequently arises in Bayesian statistics, where a posterior distribution of interest ${p(\btheta \mid \bm{x}) = \frac{p(\bm{x} \mid \btheta) p(\btheta)}{\int p(\bm{x} \mid \btheta) p(\btheta) \; \dx{\btheta}}}$ is given in terms of the Bayes theorem. The normalizing constant in the denominator is often unavailable in analytic form. However, the numerator can be evaluated.
 
-Next, we introduce a (typically simpler) distribution with density $q(\bm{x}) = \frac{q^*(\bm{x})}{Z_Q}$ such that
+Next, we introduce a (typically simpler) distribution with density $q(\bm{x}) = \frac{q^*(\bm{x})}{Z_Q}$ s.t.
 \begin{enumerate}
     \item One can sample from $q$;
     \item One can evaluate $q^*$;
@@ -226,7 +226,7 @@ p(\bx_{0:t} \mid \by_{1:t}) & \propto p(\by_t \mid \bx_{0:t}, \by_{1:t-1}) p(\bx
 \end{equation*}
 where the equalities follow from the hidden Markov model independence assumptions. For better clarity, we suppress the static parameter $\btheta$ from the conditioning.
 
-For the target $p(\bx_{0:t} \mid \by_{1:t})$, we introduce an importance sampling distribution $q(\bx_{0:t} \mid \by_{1:t})$ and sample $\bx_{0:t}^{(i)}$ from it. The importance weights are (up to normalization) given by
+For the target $p(\bx_{0:t} \mid \by_{1:t})$, we introduce an importance sampling distribution ${q(\bx_{0:t} \mid \by_{1:t})}$ and sample $\bx_{0:t}^{(i)}$ from it. The importance weights are (up to normalization) given by
 \begin{equation} \label{eq:weight-recursion1}
 \begin{split}
 w_t^{(i)} & \propto \frac{p(\bx_{0:t}{(i)} \mid \by_{1:t})}{q(\bx_{0:t}^{(i)} \mid \by_{1:t})} \\
