@@ -32,7 +32,7 @@ In a system with $v$ reactions and their hazard functions $h_i(\bm{X}_t, c_i)$, 
 \begin{equation*}
 h_0(\bm{X}_t, \bm{c}) = \sum_{i=0}^v h_i(\bm{X}_t, c_i),
 \end{equation*}
-where $\bm{c} = \left(c_1, \ldots, c_v\right)$. The time to the next reaction is then distributed according to $\mathcal{E}\mathit{xp}(h_0(\bm{X}_t, \bm{c}))$. The particular reaction type is a random variable with a categorical distribution $\mathcal{C}\mathit{at}(\widetilde{h}_1(\bm{X}_t,c_1), \ldots, \widetilde{h}_v(\bm{X}_t,c_v))$, where $\displaystyle \widetilde{h}_i(\bm{X}_t,c_i) = \frac{h_i(\bm{X}_t,c_i)}{h_0(\bm{X}_t, \bm{c})}$.
+where $\bm{c} = \left(c_1, \ldots, c_v\right)^T$. The time to the next reaction is then distributed according to $\mathcal{E}\mathit{xp}(h_0(\bm{X}_t, \bm{c}))$. The particular reaction type is a random variable with a categorical distribution $\mathcal{C}\mathit{at}(\widetilde{h}_1(\bm{X}_t,c_1), \ldots, \widetilde{h}_v(\bm{X}_t,c_v))$, where $\displaystyle \widetilde{h}_i(\bm{X}_t,c_i) = \frac{h_i(\bm{X}_t,c_i)}{h_0(\bm{X}_t, \bm{c})}$.
 
 With the above in mind, the Gillespie algorithm can now be formulated, and is given in \autoref{alg:gillespie}. Its purpose is to simulate the state evolution \eqref{eq:system-evolution} for a given time horizon $T$ while accounting for the randomness in the time until a reaction of a particular type takes place. For the purpose of this algorithm, denote the columns of the stoichiometry matrix $\mathbb{S}$ by $\bm{S}^i, \quad i = 1, \ldots, v$.
 \begin{algorithm}[ht]
