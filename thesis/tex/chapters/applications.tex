@@ -58,7 +58,8 @@ With the above in mind, the Gillespie algorithm can now be formulated, and is gi
         \Output $\text{Final state } \bm{X}_t, \text { final time } t.$
     \end{algorithmic}
 \end{algorithm}
-The algorithm us usually the bottleneck of most simulations, and must be implemented carefully; otherwise, the simulation becomes unacceptably slow. The final time $t$ is at the output as well, since it may exceed the horizon $T$. If the algorithm is run consecutively during a simulation, the interest is to follow the previous run by starting at its final time $t$.
+
+The algorithm is usually the bottleneck of most simulations, and must be implemented carefully; otherwise, the simulation becomes unacceptably slow. The final time $t$ is at the output as well, since it may exceed the horizon $T$. If the algorithm is run consecutively during a simulation, the interest is to follow the previous run by starting at its final time $t$.
 
 \section{Lotka-Volterra model} \label{sec:lotka-volterra}
 
