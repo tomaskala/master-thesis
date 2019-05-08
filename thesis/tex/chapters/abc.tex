@@ -189,7 +189,7 @@ In this thesis, we adopt a procedure described in \cite{dedecius}, which is brie
 
 The method is based on the idea that the true observation model $\obs_t$ should cover a given number of generated pseudo-observations $\bu_t^{(i)}, i = 1, \ldots, N$ by a $100p\%$ high probability region ($p$-HPR), where $p \in \left(0, 1\right)$ is a given constant. If this is true, the pseudo-observations can be expected to describe the distribution $\obs_t$ sufficiently-well. As this distribution is not known, it is approximated by the kernel $\kappa$ evaluated at $\bu_t^{(i)}, i = 1, \ldots, N$.
 
-As given in \eqref{eq:abc-likelihood-kernel}, the kernel is evaluated at each pseudo-observation $\bu_t^{(i)}, i = 1, \ldots, N$ while centered at $\by_t$. We then need to tune the width at time $t$, denoted $\epsilon_t$, so that a given fraction $\displaystyle \frac{\alpha}{N}$ pseudo-observations is covered by the $p$-HPR of the kernel. For the procedure to work, the kernel function $\kappa$ must be invariant under translation and scaling, i.e. belong to the location-scale family of distributions. Many popular kernels, including the three discussed above, belong to this family.
+As given in \eqref{eq:abc-likelihood-kernel}, the kernel is evaluated at each pseudo-observation $\bu_t^{(i)}, i = 1, \ldots, N$ while centered at $\by_t$. We then need to tune the width at time $t$, denoted $\epsilon_t$, so that a given fraction $\frac{\alpha}{N}$ of the pseudo-observations is covered by the $p$-HPR of the kernel. For the procedure to work, the kernel function $\kappa$ must be invariant under translation and scaling, i.e. belong to the location-scale family of distributions. Many popular kernels, including the three discussed above, belong to this family.
 
 The tuning procedure involves two steps:
 \begin{enumerate}
@@ -200,9 +200,16 @@ The tuning procedure involves two steps:
     \end{equation}
     meaning that $u_t^{[\alpha]}$ lies at the boundary of the $p$-HPR of $\kappa(\cdot; y_t, \epsilon_t)$.
 \end{enumerate}
-In case of multidimensional $\by_t$ and $\bu_t$, this procedure is performed coordinate-wise.
+These two steps are visualized in \autoref{fig:kernel-tuning}. In case of multidimensional $\by_t$ and $\bu_t$, this procedure is performed coordinate-wise. 
 
-Equation \eqref{eq:kernel-tuning-integral} states that $u_t^{[\alpha]}$ is either the $\frac{1-p}{2}$-quantile or the $\frac{1+p}{2}$-quantile of $\kappa(\cdot; y_t, \epsilon_t)$, depending on whether $u_t^{[\alpha]} \leq y_t$ or $u_t^{[\alpha]} \geq y_t$. If we restrict ourselves to symmetric kernels, we may get rid of this case division by exploiting kernel symmetry.
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{kernel_tuning}
+    \caption{Visualization of the kernel tuning procedure. In this picture, ${\alpha = 2}$, ${p = 0.95}$, and the kernel is Gaussian. Plotted is the kernel along with a number of pseudo-observations $u_t^{(i)}$ and the true measurement $y_t$. Equation \eqref{eq:kernel-tuning-integral} states that the shaded area has volume $\frac{p}{2} = 0.475$.}
+    \label{fig:kernel-tuning}
+\end{figure}
+
+The meaning of equation \eqref{eq:kernel-tuning-integral} is that $u_t^{[\alpha]}$ is either the $\frac{1-p}{2}$-quantile or the $\frac{1+p}{2}$-quantile of $\kappa(\cdot; y_t, \epsilon_t)$, depending on whether $u_t^{[\alpha]} \leq y_t$ or $u_t^{[\alpha]} \geq y_t$. If we restrict ourselves to symmetric kernels, we may get rid of this case division by exploiting kernel symmetry.
 
 Let $F$ denote the cumulative distribution function of the kernel $\kappa(\cdot; 0, 1)$ centered at 0 with width $\epsilon = 1$. Let its quantile function be denoted by $F^{-1}$. From $\kappa$ belonging to the location-scale family, we get that the quantile function of a general kernel $\kappa(\cdot; y_t, \epsilon_t)$ is
 \begin{equation} \label{eq:location-scale-quantile}
@@ -217,3 +224,62 @@ where the absolute value comes from the kernel being symmetric, so it is irrelev
 
 \section{Likelihood estimate through ABC} \label{sec:abcmh}
 To conclude this chapter, we summarize the entire inference about $\btheta$ in the model \eqref{eq:factorization} when ABC is used to estimate the likelihood, as given in \autoref{eq:abc-likelihood-kernel}.
+
+First, we give the ABC-based filter utilizing the kernel weight tuning described above. This is summarized in \autoref{alg:abc-filter-complete}.
+\begin{algorithm}[ht]
+    \caption{ABC-based filter with automatic kernel tuning}
+    \label{alg:abc-filter-complete}
+    \begin{algorithmic}[1]
+        \Input $\text{Number of particles } N,\ \text{current parameter value } \btheta, \text{ HPR } p, \newline \text{number of covered pseudo-observations } \alpha,\ \left\{\by_1, \ldots, \by_T\right\}.$
+        
+        \State $\text{Sample } \bx_0^{(i)} \sim \sprior(\cdot \mid \btheta), \quad i = 1, \ldots, N.$ \Comment{Initialize $N$ particles.}
+        
+        \State $w_0^{(i)} \gets \frac{1}{N}, \quad i = 1, \ldots, N.$ \Comment{Initialize uniform weights.}
+        
+        \For{$t = 1\ \mathbf{to}\ T$}
+        \State $\text{Sample } \bx_t^{(i)} \sim \trans_t(\bx_t \mid \bx_{t-1}^{(i)}, \btheta), \quad i = 1, \ldots, N.$ \Comment{Sample $N$ new particles.}
+        
+        \State $\text{Simulate } \bu_t^{(i)} \text{ from } \obs_t(\cdot \mid \bx_t^{(i)}), \quad i = 1, \ldots, N.$ \Comment{Simulate $N$ pseudo-observations.}
+        
+        \State $\text{Identify } \bu_t^{[\alpha]}.$ \Comment{Find the $\alpha$th closest pseudo-observation to $\by_t$.}
+        
+        \State $\epsilon_t \gets \frac{\left| u_t^{[\alpha]} - y_t \right|}{F^{-1}(\frac{1+p}{2})}$ \Comment{Set the kernel width at time $t$ according to \eqref{eq:kernel-tuning}.}
+        
+        \State $\text{Set } w_t^{(i)} \propto \kappa(\bu_t^{(i)}; \by_t, \epsilon_t) w_{t-1}^{(i)}, \quad i = 1, \ldots, N.$
+        
+        \State $\text{Resample } \bx_t^{(i)} \text{ and reset } w_t^{(i)} \text{ using \autoref{alg:resampling}}, \quad i = 1, \ldots, N.$
+        \EndFor
+    \end{algorithmic}
+\end{algorithm}
+The algorithm is simply a modification of \autoref{alg:abc-filter} utilizing a kernel function instead of the indicator and accounting for an automatic tuning of the kernel widths.
+
+Next, we describe a variant of the Metropolis-Hastings algorithm utilizing this adaptive filter to estimate the likelihood. This is shown in \autoref{alg:marginal-metropolis-hastings-abc}.
+\begin{algorithm}[ht]
+    \caption{Marginal Metropolis-Hastings with ABC filter}
+    \label{alg:marginal-metropolis-hastings-abc}
+    \begin{algorithmic}[1]
+        \Input $\text{Number of samples } M,\ \left\{\by_1, \ldots, \by_T\right\}.$
+        
+        \State $\text{Initialize } \btheta^{(0)}.$
+        \State $\text{Run \autoref{alg:abc-filter-complete} with } \btheta^{(0)} \text{ to obtain the weights } w_{0,t}^{(i)}, \quad t = 1, \ldots, T,\ i = 1, \ldots, N.$
+        \State $\text{Calculate } \widehat{\aux}^{(0)} \text{ according to \eqref{eq:abc-likelihood-kernel} using } w_{0,t}^{(i)}.$
+        
+        \For{$m = 1\ \mathbf{to}\ M$}
+        \State $\text{Sample } \btheta^\prime \sim \prop(\cdot \mid \btheta^{(m-1)}).$
+        \State $\text{Run \autoref{alg:abc-filter-complete} with } \btheta^\prime \text{ to obtain the weights } w_{m,t}^{(i)}, \quad t = 1, \ldots, T, \ i = 1, \ldots, N.$
+        \State $\text{Calculate } \widehat{\aux}^\prime \text{ according to \eqref{eq:abc-likelihood-kernel} using } w_{m,t}^{(i)}.$
+        \State $\text{Calculate the aceptance probability } $ \begin{equation*} \label{eq:acceptance-probability-tractable-abc}
+        \alpha = \min \left\{1, \frac{\widehat{\aux}^\prime \pprior(\btheta^\prime)}{\widehat{\aux}^{(m-1)} \pprior(\btheta^{(m-1)})} \frac{\prop(\btheta^{(m-1)} \mid \btheta^\prime)}{\prop(\btheta^\prime \mid \btheta^{(m-1)})} \right\}.
+        \end{equation*}
+        \State $\text{Sample } u \sim \mathcal{U}(0,1).$
+        \If {$u \leq \alpha$}
+        \State $\left( \btheta^{(m)}, \widehat{\aux}^{(m)} \right) \gets \left( \btheta^\prime, \widehat{\aux}^\prime \right)$ \Comment{With probability $\alpha$, accept the proposed sample.}
+        \Else
+        \State $\left( \btheta^{(m)}, \widehat{\aux}^{(m)} \right) \gets \left( \btheta^{(m-1)}, \widehat{\aux}^{(m-1)} \right)$ \Comment{With probability $1 - \alpha$, reject the proposed sample.}
+        \EndIf
+        \EndFor
+        
+        \Output $\left\{ \btheta^{(1)}, \ldots, \btheta^{(M)} \right\}$
+    \end{algorithmic}
+\end{algorithm}
+The only difference from \autoref{alg:marginal-metropolis-hastings} is the use of the ABC filter (\autoref{alg:abc-filter-complete}) to estimate the likelihood according to \eqref{eq:abc-likelihood-kernel}.
