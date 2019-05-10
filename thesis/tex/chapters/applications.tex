@@ -63,7 +63,7 @@ The algorithm is usually the bottleneck of most simulations, and must be impleme
 
 \section{Lotka-Volterra model} \label{sec:lotka-volterra}
 \paragraph{Problem description}
-The first considered problem is the Lotka-Volterra model \citep{lotka, volterra}. The system describes a population consisting of a predator and prey species interacting in time. Denoting the prey species by $\mathcal{X}_1$ and the predator species by $\mathcal{X}_2$, the system can be described by the reactions
+The first considered problem is the Lotka-Volterra model \citep{lotka, volterra}. The system describes a simplified time interaction of a population consisting of a predator and prey species. Denoting the prey species by $\mathcal{X}_1$ and the predator species by $\mathcal{X}_2$, the system can be described by the reactions
 \begin{align}
 \mathcal{R}_1:\quad & \mathcal{X}_1 \to 2 \mathcal{X}_1, \label{eq:lv1} \\
 \mathcal{R}_2:\quad & \mathcal{X}_1 + \mathcal{X}_2 \to 2 \mathcal{X}_2, \label{eq:lv2} \\
@@ -80,13 +80,13 @@ The state of the system at time $t$ is $\bm{X}_t = \left(X_{1,t}, X_{2,t}\right)
 \end{equation*}
 and the hazard functions vector is $\bm{h}(\bm{X}_t, \bm{c}) = \left(c_1 X_{1,t}, c_2 X_{1,t} X_{2,t}, c_3 X_{2,t}\right)^T$ \citep{wilkinson}. Although simple to describe, this model is analytically intractable \citep{wilkinson-book}.
 
-For the inference problem, we consider the unknown parameters to be $\btheta = \left(c_1, c_2, c_3\right)^T$, and the state at time $t$ to be $\bx_t = \left(X_{1,t}, X_{2,t}\right)$. Since the rate constants $c_1, c_2, c_3$ are by definition positive, we are working in the log space to avoid restriction to a distribution with a positive support. The model is specified by the following:
+For the inference problem, we consider the unknown parameters to be $\btheta = \left(c_1, c_2, c_3\right)^T$, and the state at time $t$ to be $\bx_t = \left(X_{1,t}, X_{2,t}\right)$. Since the rate constants $c_1, c_2, c_3$ are by definition positive, we are working in the log space to avoid restricting ourselves to positive support distributions. The model is specified by the following:
 \begin{equation*}
 \begin{split}
-\sprior(x_{1,0}) &= \mathcal{P}\mathit{o}\left(50\right), \\
-\sprior(x_{2,0}) &= \mathcal{P}\mathit{o}\left(100\right), \\
+\sprior(x_{1,0} \mid \btheta) &= \mathcal{P}\mathit{o}\left(50\right), \\
+\sprior(x_{2,0} \mid \btheta) &= \mathcal{P}\mathit{o}\left(100\right), \\
 \trans_t(\bx_t \mid \bx_{t-1}, \btheta) & \text{ is simulated using \autoref{alg:gillespie} }, \\
-\obs_t(\by_t \mid \bx_{t}, \btheta) &= \mathcal{N}_2\left(\bx_t, \sigma^2\right).
+\obs_t(\by_t \mid \bx_{t}, \btheta) &= \mathcal{N}_2\left(\bx_t, 10^2\right).
 \end{split}
 \end{equation*}
 The parameter prior and the Metropolis-Hastings proposal are additionally given by
@@ -96,7 +96,7 @@ The parameter prior and the Metropolis-Hastings proposal are additionally given 
 \prop(\btheta^\prime \mid \btheta) &= \mathcal{N}_3\left(\btheta, \text{diag}\left(0.01, 0.01, 0.01\right)\right).
 \end{split}
 \end{equation*}
-The initial parameters are $\btheta^{(0)} = \left(1, 0.005, 0.6\right)^T$. We are working with a dataset simulated using \autoref{alg:gillespie} ran so that it outputs 16 observations $\by_t$, starting from the same parameters $\btheta^{(0)}$. The inference is started in the same values and applied on a short sequence of 16 observations only. Its purpose is only to demonstrate that the algorithm is able to identify these parameters. The observation noise variance is assumed to be known $\sigma^2 = 100$.
+The initial parameters are $\btheta^{(0)} = \left(1, 0.005, 0.6\right)^T$. We are working with a dataset simulated using \autoref{alg:gillespie} ran so that it outputs 16 observations $\by_t$, starting from the same parameters $\btheta^{(0)}$. The inference is started in the correct parameters and applied on a short sequence only; its purpose is only to demonstrate that the algorithm is able to identify these parameters.
 
 We apply the marginal Metropolis-Hastings algorithm depending on the particle filter as well as the one utilizing ABC methods. Both algorithms are ran for $M = 50000$ samples with $N = 100$ particles. Additionally, the number of covered pseudo-observations in the ABC formulation is $\alpha = 95$ and the volume of the p-HPR is $p = 0.95$.
 
