@@ -16,9 +16,9 @@ def kernel_comparison():
     scale = 3.0
 
     x = np.linspace(-20, 20, 1000)
-    plt.plot(x, stats.norm.pdf(x, loc=loc, scale=scale), lw=lw, color='darkgreen', label='Gaussian')
-    plt.plot(x, stats.cauchy.pdf(x, loc=loc, scale=scale), lw=lw, color='darkblue', label='Cauchy')
-    plt.plot(x, stats.uniform.pdf(x, loc=loc-scale, scale=loc+2*scale), lw=lw, color='purple', label='Uniform')
+    plt.plot(x, stats.norm.pdf(x, loc=loc, scale=scale), lw=lw, color='dimgrey', label='Gaussian')
+    plt.plot(x, stats.cauchy.pdf(x, loc=loc, scale=scale), lw=lw, color='black', label='Cauchy')
+    plt.plot(x, stats.uniform.pdf(x, loc=loc-scale, scale=loc+2*scale), lw=lw, color='crimson', label='Uniform')
 
     plt.legend()
     plt.title('Kernel comparison')
@@ -38,16 +38,16 @@ def kernel_tuning():
     fig = plt.figure()
 
     x = np.linspace(-5, 15, 1000)
-    plt.plot(x, stats.norm.pdf(x, loc=y, scale=eps), lw=lw, color='darkblue')
+    plt.plot(x, stats.norm.pdf(x, loc=y, scale=eps), lw=lw, color='black')
 
-    plt.vlines(y, ymin=0.0, ymax=stats.norm.pdf(y, loc=y, scale=eps), lw=lw, color='purple')
-    plt.vlines(u_alpha, ymin=0.0, ymax=stats.norm.pdf(u_alpha, loc=y, scale=eps), lw=lw, color='purple')
-    plt.scatter(u, np.zeros(u.size), s=s, color='darkgreen', zorder=1000)
-    plt.scatter(u_alpha, 0, s=s, color='purple', zorder=1000)
-    plt.scatter(y, 0, s=s, color='purple', zorder=1000)
+    plt.vlines(y, ymin=0.0, ymax=stats.norm.pdf(y, loc=y, scale=eps), lw=lw, color='crimson')
+    plt.vlines(u_alpha, ymin=0.0, ymax=stats.norm.pdf(u_alpha, loc=y, scale=eps), lw=lw, color='crimson')
+    plt.scatter(u, np.zeros(u.size), s=s, color='dimgrey', zorder=1000)
+    plt.scatter(u_alpha, 0, s=s, color='crimson', zorder=1000)
+    plt.scatter(y, 0, s=s, color='crimson', zorder=1000)
 
     shaded_x = x[(x >= y) & (x <= u_alpha)]
-    plt.fill_between(shaded_x, stats.norm.pdf(shaded_x, loc=y, scale=eps), color='darkblue', alpha=0.35, linewidth=0)
+    plt.fill_between(shaded_x, stats.norm.pdf(shaded_x, loc=y, scale=eps), color='black', alpha=0.4, linewidth=0)
 
     plt.xticks([y, u_alpha], ['$y_t$', r'$u_t^{[\alpha]}$'])
     plt.yticks([])
