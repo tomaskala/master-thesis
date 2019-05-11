@@ -100,6 +100,8 @@ The initial parameters are $\btheta^{(0)} = \left(1, 0.005, 0.6\right)^\intercal
 
 We apply the marginal Metropolis-Hastings algorithm depending on the particle filter as well as the one utilizing ABC methods. Both algorithms are ran for $M = 50000$ samples with $N = 100$ particles. Additionally, the number of covered pseudo-observations in the ABC formulation is $\alpha = 95$ and the volume of the p-HPR is $p = 0.95$.
 
+When using the ABC method, we simulate pseudo-observations from the observation model $\obs_t$ without the noise term. That is, we simulate $\bu_t = \bx_t$, deterministically.
+
 \subsection{Inference using the particle filter}
 In this section, we consider inference using \autoref{alg:marginal-metropolis-hastings}, i.e. using the particle filter to approximate the likelihood.
 
@@ -161,6 +163,87 @@ Clearly, Cauchy noise corrupts the sequence too much, and the results are misera
 
 \subsection{Inference using ABC}
 In this section, we apply \autoref{alg:marginal-metropolis-hastings-abc}, the variant of the Metropolis-Hastings algorithm depending on ABC.
+
+\paragraph{Gaussian noise, Gaussian kernel}
+At first, we again corrupt the sequence $\by_t$ by a Gaussian noise, as indicated above. We then run \autoref{alg:marginal-metropolis-hastings-abc} with a Gaussian kernel to infer about the parameters $\btheta$. The results are shown in \autoref{fig:lv-abcmh-gauss-gauss-c1}, \autoref{fig:lv-abcmh-gauss-gauss-c2} and \autoref{fig:lv-abcmh-gauss-gauss-c3}.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_gauss_gauss_c1}
+    \caption{ABC-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-gauss-gauss-c1}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_gauss_gauss_c2}
+    \caption{ABC-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-gauss-gauss-c2}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_gauss_gauss_c3}
+    \caption{ABC-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-gauss-gauss-c3}
+\end{figure}
+
+Compared to the results obtained by running the particle filter-based inference with a correct observation model, the results are slightly worse in the case of $c_1$, as the true value is in a region with a lower probability. Somewhat worse result is to be expected though, since the ABC methods provide only an approximation. Otherwise, the results are comparable to those utilizing the particle filter.
+
+
+\paragraph{Cauchy noise, Gaussian kernel}
+Next, we again corrupt the observation sequence by the heavy-tailed Cauchy noise. First, we keep the Gaussian kernel to calculate the importance weights. The results are in \autoref{fig:lv-abcmh-cauchy-gauss-c1}, \autoref{fig:lv-abcmh-cauchy-gauss-c2} and \autoref{fig:lv-abcmh-cauchy-gauss-c3}.
+
+Compared to the particle filter with a misspecified observation model, the filter does not collapse at all. Instead, it remains stable, and the results resemble those obtained from a particle filter assuming a correct observation model, or those given by the previous ABC use-case.
+
+This shows the strength of the ABC approximation -- even under a heavy-tailed noise such as the Cauchy one, using a set of simulated pseudo-observations with a suitable kernel function allows the likelihood estimate to remain stable even under a severe model misspecification.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_gauss_c1}
+    \caption{ABC-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-cauchy-gauss-c1}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_gauss_c2}
+    \caption{ABC-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-cauchy-gauss-c2}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_gauss_c3}
+    \caption{ABC-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-cauchy-gauss-c3}
+\end{figure}
+
+\paragraph{Cauchy noise, Cauchy kernel}
+Finally, we repeat the same experiment as in the previous section, but use a Cauchy kernel instead of the Gaussian one. The results are very similar to those obtained using a Gaussian kernel, indicating that the filter is fairly robust to kernel choice. This agrees with the conclusion provided by \cite{dedecius}.
+
+The Cauchy kernel might be preferable to the Gaussian one for computational reasons -- its quantile function (required for kernel width tuning) can be calculated without resorting to numerical approximations.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c1}
+    \caption{ABC-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-cauchy-cauchy-c1}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c2}
+    \caption{ABC-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-cauchy-cauchy-c2}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c3}
+    \caption{ABC-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
+    \label{fig:lv-abcmh-cauchy-cauchy-c3}
+\end{figure}
 
 
 
