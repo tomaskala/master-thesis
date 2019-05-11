@@ -62,7 +62,7 @@ With the above in mind, the Gillespie algorithm can now be formulated, and is gi
 The algorithm is usually the bottleneck of most simulations, and must be implemented carefully; otherwise, the simulation becomes unacceptably slow. The final time $t$ is at the output as well, since it may exceed the horizon $T$. If the algorithm is run consecutively during a simulation, the interest is to follow the previous run by starting at its final time $t$.
 
 \section{Lotka-Volterra model} \label{sec:lotka-volterra}
-\paragraph{Problem description}
+\subsection{Problem description}
 The first considered problem is the Lotka-Volterra model \citep{lotka, volterra}. The system describes a simplified time interaction of a population consisting of a predator and prey species. Denoting the prey species by $\mathcal{X}_1$ and the predator species by $\mathcal{X}_2$, the system can be described by the reactions
 \begin{align}
 \mathcal{R}_1:\quad & \mathcal{X}_1 \to 2 \mathcal{X}_1, \label{eq:lv1} \\
@@ -100,13 +100,73 @@ The initial parameters are $\btheta^{(0)} = \left(1, 0.005, 0.6\right)^\intercal
 
 We apply the marginal Metropolis-Hastings algorithm depending on the particle filter as well as the one utilizing ABC methods. Both algorithms are ran for $M = 50000$ samples with $N = 100$ particles. Additionally, the number of covered pseudo-observations in the ABC formulation is $\alpha = 95$ and the volume of the p-HPR is $p = 0.95$.
 
+\subsection{Inference using the particle filter}
+In this section, we consider inference using \autoref{alg:marginal-metropolis-hastings}, i.e. using the particle filter to approximate the likelihood.
+
 \paragraph{Correctly specified observation model}
+At first, we assume the correct model specification. This means that the observations $\by_t$ have been corrupted by Gaussian noise, and the observation model $\obs_t$ is Gaussian as well. In this situation, the particle filter is expected to perform well, as all assumptions have been met.
+
+In \autoref{fig:lv-pmh-gauss-c1}, \autoref{fig:lv-pmh-gauss-c2} and \autoref{fig:lv-pmh-gauss-c3}, the results for the parameters $c_1$, $c_2$ and $c_3$, respectively, are shown. For each parameter, we show (in this order) the trace plot, the autocorrelation plot, and the histogram of sampled values. We use no burn-in period, as the inference starts in the correct values, but apply thinning of 100, i.e. keep every 100th sample. This ensures relatively uncorrelated samples, as is clear from the auto-correlation plots. The acceptation rate of the Metropolis-Hastings algorithms moves around 20 \%.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_gauss_c1}
+    \caption{Particle filter-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian observation model. The true value is shown in red.}
+    \label{fig:lv-pmh-gauss-c1}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_gauss_c2}
+    \caption{Particle filter-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian observation model. The true value is shown in red.}
+    \label{fig:lv-pmh-gauss-c2}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_gauss_c3}
+    \caption{Particle filter-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian observation model. The true value is shown in red.}
+    \label{fig:lv-pmh-gauss-c3}
+\end{figure}
+
+In all cases, the correct parameters are well-covered by the sampled values, while allowing for some degree of variance. The histograms provide estimated posterior distributions of the individual parameters. The sampled values can be used to provide point estimates or credible intervals for the true parameters.
 
 \paragraph{Misspecified observation model}
+Next, we keep the Gaussian observation model, but corrupt the observation sequence by a Cauchy noise with scale 10. Arguably, this scale is quite high, but is used to match the scale of the Gaussian noise from the previous section. The heavy-tailed Cauchy distribution allows sampling distant noise terms, and corrupts the observation sequence $\by_t$ much more severely. The Gaussian observation model $\obs_t$ then assigns probability close to zero to these values, and the filter collapses. This is clear from \autoref{fig:lv-pmh-cauchy-c1}, \autoref{fig:lv-pmh-cauchy-c2} and \autoref{fig:lv-pmh-cauchy-c3}.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_cauchy_c1}
+    \caption{Particle filter-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian observation model. The true value is shown in red.}
+    \label{fig:lv-pmh-cauchy-c1}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_cauchy_c2}
+    \caption{Particle filter-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian observation model. The true value is shown in red.}
+    \label{fig:lv-pmh-cauchy-c2}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_cauchy_c3}
+    \caption{Particle filter-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian observation model. The true value is shown in red.}
+    \label{fig:lv-pmh-cauchy-c3}
+\end{figure}
+
+Clearly, Cauchy noise corrupts the sequence too much, and the results are miserable. The accepted parameters are almost constant, and the posterior distribution is not even remotely-well approximated. This is an expected behavior, since the particle filter is known not to perform well under model misspecification.
+
+
+
+\subsection{Inference using ABC}
+In this section, we apply \autoref{alg:marginal-metropolis-hastings-abc}, the variant of the Metropolis-Hastings algorithm depending on ABC.
+
+
 
 \section{Prokaryotic auto-regulation model} \label{sec:autoregulation}
-\paragraph{Problem description}
+\subsection{Problem description}
 
-\paragraph{Correctly specified observation model}
+\subsection{Inference using the particle filter}
 
-\paragraph{Misspecified observation model}
+\subsection{Inference using ABC}
