@@ -80,7 +80,7 @@ The state of the system at time $t$ is $\bm{X}_t = \left(X_{1,t}, X_{2,t}\right)
 \end{equation*}
 and the hazard functions vector is $\bm{h}(\bm{X}_t, \bm{c}) = \left(c_1 X_{1,t}, c_2 X_{1,t} X_{2,t}, c_3 X_{2,t}\right)^\intercal$ \citep{wilkinson}. Although simple to describe, this model is analytically intractable \citep{wilkinson-book}.
 
-For the inference problem, we consider the unknown parameters to be $\btheta = \left(c_1, c_2, c_3\right)^\intercal$, and the state at time $t$ to be $\bx_t = \left(X_{1,t}, X_{2,t}\right)$. Since the rate constants $c_1, c_2, c_3$ are by definition positive, we are working in the log space to avoid restricting ourselves to positive support distributions. The model is specified by the following:
+For the inference problem, we consider the unknown parameters to be $\btheta = \left(c_1, c_2, c_3\right)^\intercal$, and the state at time $t$ to be $\bx_t = \left(X_{1,t}, X_{2,t}\right)^\intercal$. Since the rate constants $c_1, c_2, c_3$ are by definition positive, we are working in the log space to avoid restricting ourselves to positive support distributions. The model is specified by the following:
 \begin{equation*}
 \begin{split}
 \sprior(x_{1,0} \mid \btheta) &= \mathcal{P}\mathit{o}\left(50\right), \\
