@@ -63,8 +63,107 @@ def hazard_function(state: np.ndarray, theta: np.ndarray, const: Dict[str, float
     ])
 
 
+def simulate_state(x: np.ndarray, t0: float, deltat: float, theta: np.ndarray, const: Dict[str, float], random_state):
+    t = t0
+    dt = deltat
+    termt = t + dt
+
+    while True:
+        h = hazard_function(x, theta, const)
+        h0 = np.sum(h)
+
+        if h0 < 1e-10 or np.any(x >= 1000000):
+            t = 1e99
+        else:
+            s = random_state.rand()
+            t -= np.log(s) / h0
+
+        if t >= termt:
+            return x, t
+
+        u = random_state.rand()
+
+        if u < h[0] / h0:
+            x[2] -= 1
+            x[3] -= 1
+        elif u < (h[0] + h[1]) / h0:
+            x[2] += 1
+            x[3] += 1
+        elif u < (h[0] + h[1] + h[2]) / h0:
+            x[0] += 1
+        elif u < (h[0] + h[1] + h[2] + h[3]) / h0:
+            x[1] += 1
+        elif u < (h[0] + h[1] + h[2] + h[3] + h[4]) / h0:
+            x[1] -= 2
+            x[2] += 1
+        elif u < (h[0] + h[1] + h[2] + h[3] + h[4] + h[5]) / h0:
+            x[1] += 2
+            x[2] -= 1
+        elif u < (h[0] + h[1] + h[2] + h[3] + h[4] + h[5] + h[6]) / h0:
+            x[0] -= 1
+        else:
+            x[1] -= 1
+
+
+"""
+gillespie <- function(N, n, ...)
+{
+tt = 0
+x = N$M
+S = t(N$Post-N$Pre)
+u = nrow(S)
+v = ncol(S)
+tvec = vector("numeric",n)
+xmat = matrix(ncol=u,nrow=n+1)
+xmat[1,] = x
+for (i in 1:n) {
+h = N$h(x,tt, ...)
+tt = tt+rexp(1,sum(h))
+j = sample(v,1,prob=h)
+x = x+S[,j]
+tvec[i] = tt
+xmat[i+1,] = x
+}
+return(list(t=tvec, x=xmat))
+}"""
+
+
 # Gillespie algorithm.
 def simulate_xy(path: str, T: int, theta: np.ndarray, const: Dict[str, float], random_state=None) -> Tuple[
+    np.ndarray, np.ndarray, np.ndarray]:
+    if os.path.exists(path):
+        with open(path, mode='rb') as f:
+            return pickle.load(f)
+    else:
+        tt = 0
+        x = np.array([8, 8, 8, 5])
+        S = const['S']
+        u, v = S.shape
+
+        xmat = np.zeros(shape=(T + 1, u), dtype=int)
+        tvec = np.zeros(shape=T + 1, dtype=float)
+        xmat[0] = x
+
+        for i in range(T):
+            h = hazard_function(x, theta, const)
+            tt += random_state.exponential(scale=1 / np.sum(h))
+            j = random_state.choice(v, p=h / np.sum(h))
+            x += S[:, j]
+            tvec[i + 1] = tt
+            xmat[i + 1] += x
+
+        ymat = random_state.normal(loc=xmat[1:, 1] + 2 * xmat[1:, 2], scale=const['observation_std'])
+
+        assert xmat.shape[0] == ymat.shape[0] + 1 == tvec.shape[0]
+
+        with open(path, mode='wb') as f:
+            pickle.dump((tvec, xmat, ymat), f)
+
+        return tvec, xmat, ymat
+
+
+# Gillespie algorithm.
+def simulate_xy2(path: str, T: int, theta: np.ndarray, const: Dict[str, float], random_state=None) -> Tuple[
     np.ndarray, np.ndarray, np.ndarray]:
     if os.path.exists(path):
         with open(path, mode='rb') as f:
@@ -108,15 +207,23 @@ def simulate_xy(path: str, T: int, theta: np.ndarray, const: Dict[str, float], r
         return time, x, y
 
 
+def load_data(path):
+    with open(path, 'rb') as f:
+        t, y = pickle.load(f)
+
+    return t, y
+
+
+# TODO: Simulate in R as in Wilkinson's book (around p. 189) and then import it here?
 def main():
-    algorithm = 'abcmh'
+    algorithm = 'pmh'
     path = './auto_regulation_{}'.format(algorithm)
     random_state = check_random_state(1)
 
     if not os.path.exists(path):
         os.makedirs(path)
 
-    n_samples = 10000
+    n_samples = 2000
     n_particles = 200
     thinning = 10
 
@@ -158,9 +265,17 @@ def main():
     theta_init = np.log(np.array([0.1, 0.7, 0.35, 0.2, 0.3, 0.1]))
     random_state = check_random_state(1)
 
-    t, x, y = simulate_xy(os.path.join(path, 'simulated_data.pickle'), T=15, theta=theta_init,
-                          const=const, random_state=random_state)
-    const['times'] = t
+    # t, x, y = simulate_xy(os.path.join(path, 'simulated_data.pickle'), T=200, theta=theta_init,
+    #                       const=const, random_state=random_state)
+    t, y = load_data('./data/auto_regulation.pickle')
+
+    # print(t)
+    # print(y)
+    # print(t.shape)
+    # print(y.shape)
+    # exit()
+
+    const['times'] = np.concatenate(([0.0], t))
 
     if algorithm == 'abcmh':
         alpha = 0.9
