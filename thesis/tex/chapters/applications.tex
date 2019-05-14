@@ -83,7 +83,7 @@ The state of the system at time $t$ is $\bm{X}_t = \left(X_{1,t}, X_{2,t}\right)
 0 & 1 & -1 \\
 \end{pmatrix},
 \end{equation*}
-and the hazard functions vector is $\bm{h}(\bm{X}_t, \bm{c}) = \left(c_1 X_{1,t}, c_2 X_{1,t} X_{2,t}, c_3 X_{2,t}\right)^\intercal$ \citep{wilkinson}. Although simple to describe, this model is analytically intractable \citep{wilkinson-book}.
+and the hazard functions vector is $\bm{h}(\bm{X}, \bm{c}) = \left(c_1 X_{1}, c_2 X_{1} X_{2}, c_3 X_{2}\right)^\intercal$ \citep{wilkinson}. Although simple to describe, this model is analytically intractable \citep{wilkinson-book}.
 
 For the inference problem, we consider the unknown parameters to be $\btheta = \left(c_1, c_2, c_3\right)^\intercal$, and the state at time $t$ to be $\bx_t = \left(X_{1,t}, X_{2,t}\right)^\intercal$. Since the rate constants $c_1, c_2, c_3$ are by definition positive, we are working in the log space to avoid restricting ourselves to positive support distributions. The model is specified by the following:
 \begin{equation*}
@@ -98,12 +98,12 @@ The parameter prior and the Metropolis-Hastings proposal are additionally given 
 \begin{equation*}
 \begin{split}
 \pprior(\log c_i) &= \mathcal{U}\left(-7, 2\right), \quad i = 1, 2, 3, \\
-\prop(\btheta^\prime \mid \btheta) &= \mathcal{N}_3\left(\btheta, \text{diag}\left(0.01, 0.01, 0.01\right)\right).
+\prop(\btheta^\prime \mid \btheta) &= \mathcal{N}_3\left(\btheta, 0.01 \mathbb{I}_3\right).
 \end{split}
 \end{equation*}
 The initial parameters are $\btheta^{(0)} = \left(1, 0.005, 0.6\right)^\intercal$. We are working with a dataset simulated using \autoref{alg:gillespie} ran so that it outputs 16 observations $\by_t$, starting from the same parameters $\btheta^{(0)}$. The inference is started in the correct parameters and applied on a short sequence only; its purpose is only to demonstrate that the algorithm is able to identify these parameters.
 
-We apply the marginal Metropolis-Hastings algorithm depending on the particle filter as well as the one utilizing ABC methods. Both algorithms are ran for $M = 50000$ samples with $N = 100$ particles. Additionally, the number of covered pseudo-observations in the ABC formulation is $\alpha = 95$ and the volume of the p-HPR is $p = 0.95$.
+We apply the marginal Metropolis-Hastings algorithm depending on the particle filter as well as the one utilizing ABC methods. Both algorithms are ran for $M = 50000$ samples with $N = 100$ particles. Additionally, the number of covered pseudo-observations in the ABC formulation is $\alpha = 90$ and the volume of the p-HPR is $p = 0.95$.
 
 When using the ABC method, we simulate pseudo-observations from the observation model $\obs_t$ without the noise term. That is, we simulate $\bu_t = \bx_t$, deterministically.
 
@@ -115,21 +115,21 @@ At first, we assume the correct model specification. This means that the observa
 
 In \autoref{fig:lv-pmh-gauss-c1}, \autoref{fig:lv-pmh-gauss-c2} and \autoref{fig:lv-pmh-gauss-c3}, the results for the parameters $c_1$, $c_2$ and $c_3$, respectively, are shown. For each parameter, we show (in this order) the trace plot, the autocorrelation plot, and the histogram of sampled values. We use no burn-in period, as the inference starts in the correct values, but apply thinning of 100, i.e. keep every 100th sample. This ensures relatively uncorrelated samples, as is clear from the auto-correlation plots. The acceptation rate of the Metropolis-Hastings algorithms moves around 20 \%.
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_gauss_c1}
     \caption{Particle filter-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian observation model. The true value is shown in red.}
     \label{fig:lv-pmh-gauss-c1}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_gauss_c2}
     \caption{Particle filter-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian observation model. The true value is shown in red.}
     \label{fig:lv-pmh-gauss-c2}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_gauss_c3}
     \caption{Particle filter-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian observation model. The true value is shown in red.}
@@ -141,21 +141,21 @@ In all cases, the correct parameters are well-covered by the sampled values, whi
 \paragraph{Misspecified observation model}
 Next, we keep the Gaussian observation model, but corrupt the observation sequence by a Cauchy noise with scale 10. Arguably, this scale is quite high, but is used to match the scale of the Gaussian noise from the previous section. The heavy-tailed Cauchy distribution allows sampling distant noise terms, and corrupts the observation sequence $\by_t$ much more severely. The Gaussian observation model $\obs_t$ then assigns probability close to zero to these values, and the filter collapses. This is clear from \autoref{fig:lv-pmh-cauchy-c1}, \autoref{fig:lv-pmh-cauchy-c2} and \autoref{fig:lv-pmh-cauchy-c3}.
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_cauchy_c1}
     \caption{Particle filter-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian observation model. The true value is shown in red.}
     \label{fig:lv-pmh-cauchy-c1}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_cauchy_c2}
     \caption{Particle filter-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian observation model. The true value is shown in red.}
     \label{fig:lv-pmh-cauchy-c2}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/pmh_cauchy_c3}
     \caption{Particle filter-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian observation model. The true value is shown in red.}
@@ -172,21 +172,21 @@ In this section, we apply \autoref{alg:marginal-metropolis-hastings-abc}, the va
 \paragraph{Gaussian noise, Gaussian kernel}
 At first, we again corrupt the sequence $\by_t$ by a Gaussian noise, as indicated above. We then run \autoref{alg:marginal-metropolis-hastings-abc} with a Gaussian kernel to infer about the parameters $\btheta$. The results are shown in \autoref{fig:lv-abcmh-gauss-gauss-c1}, \autoref{fig:lv-abcmh-gauss-gauss-c2} and \autoref{fig:lv-abcmh-gauss-gauss-c3}.
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_gauss_gauss_c1}
     \caption{ABC-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-gauss-gauss-c1}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_gauss_gauss_c2}
     \caption{ABC-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-gauss-gauss-c2}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_gauss_gauss_c3}
     \caption{ABC-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Gaussian noise and a Gaussian kernel. The true value is shown in red.}
@@ -203,21 +203,21 @@ Compared to the particle filter with a misspecified observation model, the filte
 
 This shows the strength of the ABC approximation -- even under a heavy-tailed noise such as the Cauchy one, using a set of simulated pseudo-observations with a suitable kernel function allows the likelihood estimate to remain stable even under a severe model misspecification.
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_gauss_c1}
     \caption{ABC-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-cauchy-gauss-c1}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_gauss_c2}
     \caption{ABC-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-cauchy-gauss-c2}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_gauss_c3}
     \caption{ABC-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Cauchy noise and a Gaussian kernel. The true value is shown in red.}
@@ -229,21 +229,21 @@ Finally, we repeat the same experiment as in the previous section, but use a Cau
 
 The Cauchy kernel might be preferable to the Gaussian one for computational reasons -- its quantile function (required for kernel width tuning) can be calculated without resorting to numerical approximations.
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c1}
     \caption{ABC-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-cauchy-cauchy-c1}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c2}
     \caption{ABC-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-cauchy-cauchy-c2}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[htp]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c3}
     \caption{ABC-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
@@ -254,6 +254,92 @@ The Cauchy kernel might be preferable to the Gaussian one for computational reas
 
 \section{Prokaryotic auto-regulation model} \label{sec:autoregulation}
 \subsection{Problem description}
+The second considered model comes from \cite{wilkinson2, wilkinson}, and describes a simplified prokaryotic autoregulatory gene network. The discussion below follows these two papers.
+
+The considered model assumes that the dimer of a protein $P$, denoted $P_2$, represses its coding gene's transcription to RNA by binding to a regulatory region in the gene. This transcription begins by binding of RNA-polymerase to the promoter of the gene. As the RNA-polymerase moves along the gene, it transcripts the gene into mRNA. The transcription is repressed by binding of $P_2$ to regions od the gene called operators. The repression and transcription can be described by the following reactions in a simplified way:
+\begin{equation*}
+\begin{split}
+\mathcal{R}_1:\quad & \mathit{DNA} + P_2 \to \mathit{DNA} \cdot P_2 \\
+\mathcal{R}_2:\quad & \mathit{DNA} \cdot P_2 \to \mathit{DNA} + P_2 \\
+\mathcal{R}_3:\quad & \mathit{DNA} \to \mathit{DNA} + \mathit{RNA}.
+\end{split}
+\end{equation*}
+
+The entire process of translating the mRNA into the protein $P$ is summarized by the single reaction
+\begin{equation*}
+\mathcal{R}_4:\quad \mathit{RNA} \to \mathit{RNA} + P.
+\end{equation*}
+
+The reversible dimerization of $P$ is described by
+\begin{equation*}
+\begin{split}
+\mathcal{R}_5:\quad & 2P \to P_2 \\
+\mathcal{R}_6:\quad & P_2 \to 2P.
+\end{split}
+\end{equation*}
+
+The remaining two reactions describe mRNA and protein degradation
+\begin{equation*}
+\begin{split}
+\mathcal{R}_7:\quad & \mathit{RNA} \to \emptyset \\
+\mathcal{R}_8:\quad & P \to \emptyset.
+\end{split}
+\end{equation*}
+
+The state of the system at time $t$ is $\bm{X}_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, \mathit{DNA}_t \cdot (P_2)_t, \mathit{DNA}_t\right)^\intercal$. The stoichiometry matrix is given by
+\begin{equation} \label{eq:singular-stoichiometry}
+\mathbb{S} = \begin{pmatrix}
+0 & 0 & 1 & 0 & 0 & 0 & -1 & 0 \\
+0 & 0 & 0 & 1 & -2 & 2 & 0 & -1 \\
+-1 & 1 & 0 & 0 & 1 & -1 & 0 & 0 \\
+1 & -1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+-1 & 1 & 0 & 0 & 0 & 0 & 0 & 0
+\end{pmatrix},
+\end{equation}
+and the hazard function vector is \citep{wilkinson}
+\begin{equation*}
+\bm{h}(\bm{X}, \bm{c}) = \left(c_1 P_2 \mathit{DNA}, c_2 \mathit{DNA} \cdot P_2, c_3 \mathit{DNA}, c_4 \mathit{RNA}, \frac{c_5 P(P-1)}{2}, c_6 P_2, c_7 \mathit{RNA}, c_8 P \right)^\intercal.
+\end{equation*}
+
+The matrix \eqref{eq:singular-stoichiometry} is singular, as we can add the last two rows together to produce a zero vector. Given the variable ordering in $\bm{X}_t$, this implies that
+\begin{equation*}
+\mathit{DNA} \cdot P_2 + \mathit{DNA} = k,
+\end{equation*}
+where $k$ is a constant. From this, it follows that $\mathit{DNA} \cdot P_2 = k - \mathit{DNA}$, which we substitute into the system described above. This results in a system of four variables only, denoted $\bm{X}_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, \mathit{DNA}_t\right)^\intercal$.
+
+This substitution simplifies the stoichiometry matrix \eqref{eq:singular-stoichiometry} into
+\begin{equation*}
+\mathbb{S} = \begin{pmatrix}
+0 & 0 & 1 & 0 & 0 & 0 & -1 & 0 \\
+0 & 0 & 0 & 1 & -2 & 2 & 0 & -1 \\
+-1 & 1 & 0 & 0 & 1 & -1 & 0 & 0 \\
+-1 & 1 & 0 & 0 & 0 & 0 & 0 & 0
+\end{pmatrix},
+\end{equation*}
+and the hazard function vector into
+\begin{equation*}
+\bm{h}(\bm{X}_t, \bm{c}) = \left(c_1 P_2 \mathit{DNA}, c_2 (k - \mathit{DNA}), c_3 \mathit{DNA}, c_4 \mathit{RNA}, \frac{c_5 P(P-1)}{2}, c_6 P_2, c_7 \mathit{RNA}, c_8 P \right)^\intercal.
+\end{equation*}
+
+For the inference problem, the unknown parameters are $\btheta = \left(c_1, c_2, c_3, c_4, c_7, c_8\right)^\intercal$. The parameters $c_5$ and $c_6$ are assumed to be known, exactly as in \cite{wilkinson}. The latent state at time $t$ is $\bx_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, \mathit{DNA}_t\right)^\intercal$. We again work in the log-space, as the rate constants are positive by definition. The model described by \cite{wilkinson} assumes the initial state to be known $\bx_0 = \left(8,8,8,5\right)^\intercal$, $k = 10$, $c_5 = 0.1$, $c_6 = 0.9$, and
+\begin{equation*}
+\begin{split}
+\trans_t(\bx_t \mid \bx_{t-1}, \btheta) & \text{ is simulated using \autoref{alg:gillespie} }, \\
+\obs_t(\by_t \mid \bx_{t}, \btheta) &= \mathcal{N}\left(P_t + 2 (P_2)_t, 2^2\right).
+\end{split}
+\end{equation*}
+This means we are only able to observe the protein concentrations, subject to error. This makes the problem considerably more difficult compared to the Lotka-Volterra model, where we observed the entire state vector (up to noise).
+
+The parameter prior and the Metropolis-Hastings proposal are additionally given by
+\begin{equation*}
+\begin{split}
+\pprior(\log c_i) &= \mathcal{U}\left(-7, 2\right), \quad i = 1, 2, 3, 4, 7, 8, \\
+\prop(\btheta^\prime \mid \btheta) &= \mathcal{N}_6\left(\btheta, 0.08 \mathbb{I}_6\right).
+\end{split}
+\end{equation*}
+The initial parameters are sampled from the prior distributions. We simulate the data $\by_t$ using \autoref{alg:gillespie} and obtain a sequence of $T = 237$ observations $\by_t \sim \mathcal{N}\left(P_t + 2 (P_2)_t, 2^2\right)$.
+
+The marginal Metropolis-Hastings is run again for $M = 50000$ samples, this time with $N = 200$ particles. The ABC parameters are $\alpha = 180$ and $p = 0.95$. The pseudo-observations are again simulated from $\obs_t$ without the noise term.
 
 \subsection{Inference using the particle filter}
 
