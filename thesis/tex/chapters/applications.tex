@@ -5,6 +5,11 @@ In this chapter, we apply the models developed earlier to two selected problems.
 
 Both problems require simulating reactions in order to propagate the system states through time. This is done with the help of the Gillespie algorithm, which is first described in \autoref{sec:gillespie}.
 
+
+\section{Implementation notes}
+All of the experiments described below have been implemented in Python 3.6.5. The performance-critical parts were additionally written in Cython to obtain C-like performance. The only additional dependencies are NumPy 1.14.3, SciPy 1.2.1, Matplotlib 2.2.2 and Statsmodels 0.9.0. The experiments have been performed on a standard laptop computer.
+
+
 \section{Preliminary: the Gillespie algorithm} \label{sec:gillespie}
 The Gillespie algorithm \citep{gillespie1, gillespie2} is used to simulate a stochastic process describing the time evolution of a system of reactions. The discussion given here follows \cite{wilkinson-book}.
 
