@@ -256,7 +256,7 @@ The Cauchy kernel might be preferable to the Gaussian one for computational reas
 \subsection{Problem description}
 The second considered model comes from \cite{wilkinson2, wilkinson}, and describes a simplified prokaryotic autoregulatory gene network. The discussion below follows these two papers.
 
-The considered model assumes that the dimer of a protein $P$, denoted $P_2$, represses its coding gene's transcription to RNA by binding to a regulatory region in the gene. This transcription begins by binding of RNA-polymerase to the promoter of the gene. As the RNA-polymerase moves along the gene, it transcripts the gene into mRNA. The transcription is repressed by binding of $P_2$ to regions od the gene called operators. The repression and transcription can be described by the following reactions in a simplified way:
+The model assumes that the dimer of a protein $P$, denoted $P_2$, represses the transcription of its coding gene by binding to a regulatory region in the gene. This transcription begins by binding of RNA-polymerase to the promoter of the gene. As the RNA-polymerase moves along the gene, it transcripts the gene into mRNA. The transcription is repressed by binding of $P_2$ to regions od the gene called operators. The repression and transcription can be described in a simplified way by the following reactions:
 \begin{equation*}
 \begin{split}
 \mathcal{R}_1:\quad & \mathit{DNA} + P_2 \to \mathit{DNA} \cdot P_2 \\
@@ -286,7 +286,7 @@ The remaining two reactions describe mRNA and protein degradation
 \end{split}
 \end{equation*}
 
-The state of the system at time $t$ is $\bm{X}_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, \mathit{DNA}_t \cdot (P_2)_t, \mathit{DNA}_t\right)^\intercal$. The stoichiometry matrix is given by
+The state of the system at time $t$ is $\bm{X}_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, (\mathit{DNA} \cdot P_2)_t, \mathit{DNA}_t\right)^\intercal$. The stoichiometry matrix is given by
 \begin{equation} \label{eq:singular-stoichiometry}
 \mathbb{S} = \begin{pmatrix}
 0 & 0 & 1 & 0 & 0 & 0 & -1 & 0 \\
@@ -305,7 +305,7 @@ The matrix \eqref{eq:singular-stoichiometry} is singular, as we can add the last
 \begin{equation*}
 \mathit{DNA} \cdot P_2 + \mathit{DNA} = k,
 \end{equation*}
-where $k$ is a constant. From this, it follows that $\mathit{DNA} \cdot P_2 = k - \mathit{DNA}$, which we substitute into the system described above. This results in a system of four variables only, denoted $\bm{X}_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, \mathit{DNA}_t\right)^\intercal$.
+where $k$ is a constant. This is equation is called a conservation law, and the constant $k$ denotes the number of copies of the particular gene in the genome. From this conservation law, it follows that $\mathit{DNA} \cdot P_2 = k - \mathit{DNA}$, which we substitute into the system described above. This results in a system of four variables only, denoted ${\bm{X}_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, \mathit{DNA}_t\right)^\intercal}$.
 
 This substitution simplifies the stoichiometry matrix \eqref{eq:singular-stoichiometry} into
 \begin{equation*}
@@ -318,17 +318,17 @@ This substitution simplifies the stoichiometry matrix \eqref{eq:singular-stoichi
 \end{equation*}
 and the hazard function vector into
 \begin{equation*}
-\bm{h}(\bm{X}_t, \bm{c}) = \left(c_1 P_2 \mathit{DNA}, c_2 (k - \mathit{DNA}), c_3 \mathit{DNA}, c_4 \mathit{RNA}, \frac{c_5 P(P-1)}{2}, c_6 P_2, c_7 \mathit{RNA}, c_8 P \right)^\intercal.
+\bm{h}(\bm{X}, \bm{c}) = \left(c_1 P_2 \mathit{DNA}, c_2 (k - \mathit{DNA}), c_3 \mathit{DNA}, c_4 \mathit{RNA}, \frac{c_5 P(P-1)}{2}, c_6 P_2, c_7 \mathit{RNA}, c_8 P \right)^\intercal.
 \end{equation*}
 
-For the inference problem, the unknown parameters are $\btheta = \left(c_1, c_2, c_3, c_4, c_7, c_8\right)^\intercal$. The parameters $c_5$ and $c_6$ are assumed to be known, exactly as in \cite{wilkinson}. The latent state at time $t$ is $\bx_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, \mathit{DNA}_t\right)^\intercal$. We again work in the log-space, as the rate constants are positive by definition. The model described by \cite{wilkinson} assumes the initial state to be known $\bx_0 = \left(8,8,8,5\right)^\intercal$, $k = 10$, $c_5 = 0.1$, $c_6 = 0.9$, and
+For the inference problem, the unknown parameters are $\btheta = \left(c_1, c_2, c_3, c_4, c_7, c_8\right)^\intercal$. The parameters $c_5$ and $c_6$ are assumed to be known, exactly as in \cite{wilkinson}. The latent state at time $t$ is $\bx_t = \left(\mathit{RNA}_t, P_t, (P_2)_t, \mathit{DNA}_t\right)^\intercal$. We again work in the log-space, as the rate constants are positive by definition. The model described by \cite{wilkinson} assumes the initial state to be known $\bx_0 = \left(8,8,8,5\right)^\intercal$, ${k = 10}$, ${c_5 = 0.1}$, ${c_6 = 0.9}$, and that
 \begin{equation*}
 \begin{split}
 \trans_t(\bx_t \mid \bx_{t-1}, \btheta) & \text{ is simulated using \autoref{alg:gillespie} }, \\
 \obs_t(\by_t \mid \bx_{t}, \btheta) &= \mathcal{N}\left(P_t + 2 (P_2)_t, 2^2\right).
 \end{split}
 \end{equation*}
-This means we are only able to observe the protein concentrations, subject to error. This makes the problem considerably more difficult compared to the Lotka-Volterra model, where we observed the entire state vector (up to noise).
+This means we are only able to observe the protein concentrations, subject to error. The problem becomes considerably more challenging compared to the Lotka-Volterra model, where we observed the entire state vector (up to noise). Here we only observe a noisy linear combination of two elements of the latent state, which makes the inference much more difficult. The biological interpretation is that we are not able to distinguish the protein monomers from its dimers.
 
 The parameter prior and the Metropolis-Hastings proposal are additionally given by
 \begin{equation*}
