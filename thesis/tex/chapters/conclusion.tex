@@ -1,9 +1,9 @@
 \chapter{Conclusion and future work}
 \label{chap:conclusion}
 
-In this thesis, we considered the problem of static parameter inference in state-space models. We approached the problem from a Bayesian viewpoint, formulating a prior density and inferring a posterior distribution. The problem is complicated by the likelihood of the state-space model being intractable, which prevents the application of standard Markov Chain Monte Carlo (MCMC) methods.
+In this thesis, we considered the problem of static parameter inference in state-space models. We approached the problem from a Bayesian viewpoint, formulating a prior density and inferring a posterior distribution. The inference process is complicated by the likelihood of the state-space model being intractable, which prevents the application of standard Markov Chain Monte Carlo (MCMC) methods.
 
-To address this issue, we first considered the particle filter. First, we derived this filter from importance sampling, and listed some of its properties. We then described how we can estimate the model likelihood through the particle filter without affecting the asymptotic properties of the MCMC sampler.
+To address this issue, we initially considered the particle filter. First, we derived the filter through importance sampling, and listed some of its properties. We then described how we can estimate the model likelihood through the particle filter without affecting the asymptotic properties of the MCMC sampler.
 
 The complication is that the particle filter requires the observation model to be completely determined. In applications, we often do not possess knowledge about the exact probabilistic form of this observation density. Instead, we have a means to generate observations from the latent states, typically by a (differential) equation or a simulation. In this case, we may apply Approximate Bayesian Computation techniques to instead approximate the likelihood through simulations.
 
@@ -11,8 +11,8 @@ We derived the exact form of this filter, as well as the use of kernel functions
 
 The particle filter and ABC-based methods were compared on two examples, both requiring the simulation of stochastic reactions using the Gillespie algorithm. The first experiment was the Lotka-Volterra model, the second one a simplified model for prokaryotic auto-regulation. We compared the two approaches in well-specified as well as in misspecified observation model scenarios.
 
-In both cases, the particle filter worked well under the correct model, and completely collapsed under model misspecification. The ABC-based method does not suffer from this collapse, but as an approximation, performs necessarily worse than the particle filter. This is clear especially in the auto-regulation model, which is considerably more difficult than the Lotka-Volterra system.
+In both cases, the particle filter worked well under the correct model, and completely collapsed under model misspecification. The ABC-based method does not suffer from this collapse, but as an approximation, performs necessarily worse than the particle filter. This is clear especially in the auto-regulation model, which poses a considerably more difficult task than the Lotka-Volterra system.
 
-In the future, more complex, multidimensional kernel functions could be considered. The kernel width tuning procedure utilized in this thesis has been derived in context of one-dimensional kernels, and applied coordinate-wise in case of multidimensional observations. As a consequence, the individual observation vector elements are assumed independent. By allowing to model them in a multidimensional settings, one could also exploit their individual dependence.
+In future, the possibility to use multidimensional kernel functions could be considered. The kernel width tuning procedure utilized in this thesis has been derived in context of one-dimensional kernels, and applied coordinate-wise in case of multidimensional observations. As a consequence, the individual observation vector elements are assumed independent. By allowing to model them in a multidimensional settings, one could also exploit their dependencies.
 
-If applications to more complicated biological systems was of interest, one should study more sophisticated ways of simulating the latent states. The Gillespie algorithm is still a naïve method and fails to cover the necessary details present in systems as complex as those found in molecular biology.
+If applications to more complicated biological systems was of interest, one should study more sophisticated ways of simulating the latent states. The Gillespie algorithm is still a naïve method, and fails to cover the details present in systems as complex as those found in molecular biology.
