@@ -293,7 +293,7 @@ The normalized importance weights are interpreted as a probability vector of a c
 \autoref{alg:resampling} is known as multinomial resampling. There are other, more sophisticated, approaches, such as stratified resampling \citep{resampling}, which come at the cost of increased complexity.
 
 \paragraph{The particle filter}
-The remaining step is the choice of the importance sampling distribution $q(\bm{x})$. Obviously, the more similar this distribution is to the target $p(\bm{x})$, the closer approximation we obtain.
+The remaining step is the choice of the importance sampling distribution $q(\bx_t \mid \bx_{0:t-1}, \by_{1:t}, \btheta)$. Obviously, the more similar this distribution is to the target $p(\bx_{0:t} \mid \by_{1:t}, \btheta)$, the closer approximation we obtain.
 
 The particle filter arises when the transition distribution $\trans_t(\bx_t \mid \bx_{t-1}, \btheta)$ is chosen as the importance distribution, that is, when
 \begin{equation*}
