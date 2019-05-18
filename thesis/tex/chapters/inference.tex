@@ -3,7 +3,7 @@
 
 This chapter describes the state-space model (SSM) formulation we are working with. In \autoref{sec:ssm-definition}, we formally define the SSM and state our assumptions about the individual probability distributions.
 
-In \autoref{sec:parameter-inference}, we calculate the posterior distribution of the parameters of interest, and show that straightforward inference is not possible. Further on, we derive a sampler to approximate this distribution. By itself, this sampler is unusable, as it requires the evaluation of the intractable likelihood. Nevertheless, it is illustrative to compare it with the variant derived later.
+In \autoref{sec:parameter-inference}, we calculate the posterior distribution of the parameters of interest, and show that straightforward inference is not possible. Further on, we derive a sampler to approximate this distribution. This sampler is unusable, as it requires the evaluation of the intractable likelihood. Nevertheless, it is illustrative to compare it with the variant derived later.
 
 To circumvent the likelihood evaluation, we introduce the particle filter in \autoref{sec:particle-filter}. This section gives the definition and some of the properties of the filter.
 
@@ -22,16 +22,16 @@ The HMM formulation means that the joint distribution of $\bx_{0:T}$ and $\by_{1
 \begin{equation}\label{eq:factorization}
 p(\bx_{0:T}, \by_{1:T} \mid \btheta) = \sprior(\bx_0 \mid \btheta) \prod_{t = 1}^{T} \trans_t(\bx_t \mid \bx_{t-1}, \btheta) \obs_t(\by_t \mid \bx_t, \btheta),
 \end{equation}
-where $\sprior$ is the prior distribution over the initial state, $\trans_t$ is the transition distribution at time $t$ and $\obs_t$ is the observation model at time $t$.
+where $\sprior(\bx_0 \mid \btheta)$ is the prior distribution over the initial state, $\trans_t(\bx_t \mid \bx_{t-1}, \btheta)$ is the transition distribution at time $t$ and $\obs_t(\by_t \mid \bx_t, \btheta)$ is the observation model at time $t$.
 
 The factorization \eqref{eq:factorization} can be written more clearly as
-\begin{align*}
-\bx_0 \mid \btheta & \sim \sprior(\cdot \mid \btheta), \\
-\bx_t \mid \bx_{t-1}, \btheta & \sim \trans_t(\cdot \mid \bx_{t-1}, \btheta), \quad t = 1, \ldots, T, \\
-\by_t \mid \bx_t, \btheta & \sim \obs_t(\cdot \mid \bx_t, \btheta), \quad t = 1, \ldots, T.
-\end{align*}
+\begin{alignat*}{2}
+\bx_0 \mid \btheta & \sim \sprior(\bx_0 \mid \btheta), & \\
+\bx_t \mid \bx_{t-1}, \btheta & \sim \trans_t(\bx_t \mid \bx_{t-1}, \btheta), \quad & t = 1, \ldots, T, \\
+\by_t \mid \bx_t, \btheta & \sim \obs_t(\by_t \mid \bx_t, \btheta), \quad & t = 1, \ldots, T.
+\end{alignat*}
 
-Finally, in accordance with the Bayesian approach \citep{bayes}, we introduce a prior distribution $\pprior$ over the unknown parameters $\btheta$ quantifying our knowledge about $\btheta$ before having observed any data. This allows us to state the full joint distribution
+Finally, in accordance with the Bayesian approach \citep{bayes}, we introduce a prior distribution $\pprior$ over the unknown parameter $\btheta$ quantifying our knowledge about $\btheta$ before having observed any data. This allows us to state the full joint distribution
 \begin{equation}\label{eq:full-joint}
 p(\bx_{0:T}, \by_{1:T}, \btheta) = p(\bx_{0:T}, \by_{1:T} \mid \btheta) \pprior(\btheta).
 \end{equation}
@@ -92,28 +92,27 @@ Given an observed sequence $\by_{1:T}$, Bayesian inference relies on the joint p
 \begin{equation}\label{eq:joint-posterior}
 p(\btheta, \bx_{0:T} \mid \by_{1:T}) = \underbrace{p(\bx_{0:T} \mid \btheta, \by_{1:T})}_{\text{State inference}} \underbrace{p(\btheta \mid \by_{1:T})}_{\text{Parameter inference}}.
 \end{equation}
-Our primary interest is to perform inference about the static parameter $\btheta$. From \eqref{eq:joint-posterior}, it is clear that to infer about the hidden states $\bx_{0:T}$, one needs knowledge about $\btheta$, so even if the hidden states are of interest, inference about $\btheta$ is necessary.
+Our primary goal is to infer the static parameter $\btheta$. From \eqref{eq:joint-posterior}, it is clear that for state inference, one needs knowledge about $\btheta$, so even if the latent states $\bx_{0:T}$ are of interest, knowledge about $\btheta$ is necessary.
 
 
 \paragraph{Bayesian inference}
 
-To perform Bayesian inference about $\btheta$, we express the posterior of $\btheta$ by applying the Bayes theorem:
+To perform Bayesian inference of $\btheta$, we express the posterior of $\btheta$ by applying the Bayes theorem:
 \begin{equation} \label{eq:posterior}
 p(\btheta \mid \by_{1:T}) = \frac{p(\by_{1:T} \mid \btheta) \pprior(\btheta)}{\int p(\by_{1:T} \mid \btheta) \pprior(\btheta) \; \dx{\btheta}}.
 \end{equation}
-
-Evaluating the likelihood $p(\by_{1:T} \mid \btheta)$ requires marginalizing over $\bx_{0:T}$:
-\begin{equation*}
+Evaluating the likelihood $p(\by_{1:T} \mid \btheta)$ requires marginalising over $\bx_{0:T}$:
+\begin{equation} \label{eq:likelihood}
 p(\by_{1:T} \mid \btheta) = \int p(\bx_{0:T}, \by_{1:T} \mid \btheta) \; \dx{\bx_{0:T}},
-\end{equation*}
+\end{equation}
 where $p(\bx_{0:T}, \by_{1:T} \mid \btheta)$ is given in \eqref{eq:factorization}. Unless the SSM is linear and Gaussian, such $d_x(T+1)$-dimensional integral is intractable \citep{andrieu}.
 
 
 \paragraph{Inference under tractable likelihood assumption}
 
-For the time being, we proceed as if the likelihood was tractable. We derive a sampler for $\btheta$ and note which component cannot be evaluated due to the likelihood being present. \autoref{sec:particle-filter-estimate} then describes the necessary changes to allow circumventing the likelihood evaluation.
+Let us first proceed as if the likelihood was tractable. We derive a sampler for $\btheta$ and note which component cannot be evaluated because of dependence on the intractable likelihood \eqref{eq:likelihood}. \autoref{sec:particle-filter-estimate} then describes the necessary modifications to allow circumventing the likelihood evaluation.
 
-Often, the interest is not in the posterior $p(\btheta \mid \by_{1:T})$ itself, but on the expectation of some function $\phi$ w.r.t. this distribution, i.e. on
+Often, the interest is not directly in the posterior $p(\btheta \mid \by_{1:T})$ itself, but in the expectation of some function $\phi$ w.r.t. this distribution, i.e., in
 \begin{equation} \label{eq:posterior-integral}
 \E_{p(\cdot \mid \by_{1:T})}[\phi(\btheta)] = \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \; \dx{\btheta}.
 \end{equation}
@@ -121,12 +120,12 @@ We construct a Metropolis-Hastings sampler \citep{metropolis, hastings} with tar
 \begin{equation*}
 \frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}).
 \end{equation*}
-An appealing property of the Metropolis-Hastings algorithm is that such arithmetic mean almost surely converges to \eqref{eq:posterior-integral} as the number of samples grows \citep{robert-casella}, i.e.
+An appealing property of the Metropolis-Hastings algorithm is that such arithmetic mean almost surely converges to \eqref{eq:posterior-integral} as the number of samples grows \citep{robert-casella}, i.e.,
 \begin{equation*}
 \frac{1}{M} \sum_{m=1}^M \phi(\btheta^{(m)}) \xrightarrow[M \to \infty]{a.s} \int \phi(\btheta) p(\btheta \mid \by_{1:T}) \; \dx{\btheta}.
 \end{equation*}
 
-Finally, we note that if one is indeed interested in the distribution $p(\btheta \mid \by_{1:T})$ itself, it can be recovered by the empirical distribution
+Finally, we note that if one is interested in the distribution $p(\btheta \mid \by_{1:T})$ itself, it can be recovered by the empirical distribution
 \begin{equation*}
 \widehat{p}(\btheta \mid \by_{1:T}) = \frac{1}{M} \sum_{m=1}^M \delta_{\btheta^{(m)}}(\btheta),
 \end{equation*}
@@ -134,15 +133,15 @@ where $\delta$ denotes the Dirac distribution. This estimate can be additionally
 
 
 \paragraph{Metropolis-Hastings algorithm}
-The Metropolis-Hastings algorithm is described in \autoref{alg:metropolis-hastings}. Although well-known, it is included for comparison with the variant employing the particle filter, introduced in \autoref{alg:marginal-metropolis-hastings}.
+The Metropolis-Hastings algorithm is described in \autoref{alg:metropolis-hastings}. Although well-known, it is included for comparison with the variant utilizing the particle filter introduced in \autoref{alg:marginal-metropolis-hastings}.
 
-The algorithm constructs a Markov chain on the variable $\btheta$, whose transition distribution $q$ is called the proposal distribution in this context. Starting at an initial state $\btheta_0$, candidate states $\btheta^\prime$ are iteratively sampled according to $q(\cdot \mid \btheta)$, where $\btheta$ is the current state of the chain.
+The algorithm constructs a Markov chain on the variable $\btheta$, whose transition distribution $q$ is called the proposal distribution in this context. Starting from an initial state $\btheta_0$, candidate states $\btheta^\prime$ are iteratively sampled according to $q(\cdot \mid \btheta)$, where $\btheta$ is the current state of the chain.
 
-We then calculate the acceptance probability $\alpha$ in \eqref{eq:acceptance-probability}, which considers which of the two states $\btheta$ and $\btheta^\prime$ is more probable under the target distribution ${p(\cdot \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pprior(\btheta)}$. Additionally, it allows the chain to ``step back'' and not move to the new state $\btheta^\prime$ by comparing the probability of the two states under $q$, but in reverse direction. With probability $\alpha$, the Markov chain then evolves into $\btheta^\prime$; otherwise, it remains in the current state.
+In the next step, the acceptance probability $\alpha$ is calculated in \eqref{eq:acceptance-probability}. This probability considers which of the two states $\btheta$ and $\btheta^\prime$ is more probable under the target distribution ${p(\cdot \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pprior(\btheta)}$. Additionally, it allows the chain to ``step back'' and not move to the new state $\btheta^\prime$ by comparing the probability of the two states under $q$, but in reverse direction. With probability $\alpha$, the Markov chain then evolves into $\btheta^\prime$; otherwise, it remains in the current state.
 
-It can be shown \citep{robert-casella} that the distribution $p(\btheta \mid \by_{1:T})$ is the limiting distribution of such Markov chain. This means that with the number of transitions going to infinity, the sampled $\btheta$ are distributed according to our target distribution $p(\btheta \mid \by_{1:T})$. To approximately reach this limiting distribution, a number of initial samples (called the burn-in period) is often discarded. In addition, one usually wants independent samples from the target distribution, which the samples from a Markov chain are \emph{not}. In practice, only samples with a given spacing are kept to ensure their approximate independence.
+It can be shown \citep{robert-casella} that the distribution $p(\btheta \mid \by_{1:T})$ is the limiting distribution of such Markov chain. This means that with the number of transitions going to infinity, the sampled $\btheta$ are distributed according to our target distribution $p(\btheta \mid \by_{1:T})$. To approximately reach this limiting distribution, a number of initial samples (called the burn-in period) is often discarded. In addition, one usually wants independent samples from the target distribution, which the samples from a Markov chain are \emph{not}. In practice, only samples with a given spacing are kept to ensure their approximate independence; this is called thinning.
 
-Similarly to the prior $\pprior$, setting the proposal $q$ is problem-dependent, and both distributions must be selected carefully. Diagnosing converge of the sampler is a notably difficult task, and one usually resorts to graphical tools to determine whether the sampled values have stabilized. Some such plots are given in \autoref{chap:applications}.
+Similarly to the prior $\pprior$, setting the proposal $q$ is problem-dependent, and both distributions must be selected carefully. Diagnosing converge of the sampler is a notably difficult task, and one usually resorts to graphical tools to determine whether the sampled values have stabilized \citep{mcmc}. Some of such plots are given in \autoref{chap:applications}.
 
 \begin{algorithm}[ht]
     \caption{Metropolis-Hastings}
@@ -169,7 +168,7 @@ Similarly to the prior $\pprior$, setting the proposal $q$ is problem-dependent,
     \end{algorithmic}
 \end{algorithm}
 
-From \autoref{alg:metropolis-hastings}, we see that the acceptance probability \eqref{eq:acceptance-probability} cannot be calculated, as it depends on the intractable likelihood $p(\by_{1:T} \mid \btheta)$. In \autoref{sec:particle-filter-estimate}, we give a modified variant of the Metropolis-Hastings algorithm, where the likelihood is approximated using the particle filter. The derivation of this filter is the content of the next section.
+We see from \autoref{alg:metropolis-hastings} that the acceptance probability \eqref{eq:acceptance-probability} cannot be calculated, as it depends on the intractable likelihood $p(\by_{1:T} \mid \btheta)$. In \autoref{sec:particle-filter-estimate}, we give a modified variant of the Metropolis-Hastings algorithm, where the likelihood is approximated using the particle filter. The derivation of this filter is the content of the next section.
 
 
 
@@ -179,15 +178,19 @@ The particle filter \citep{particle-filter} is a method for approximating the fi
 \paragraph{Importance sampling}
 Here we briefly review the basic idea behind importance sampling. For a more thorough treatment, the reader is referred to \cite{information-theory} or \cite{robert-casella}.
 
-Consider a situation where the expectation of some function $\phi$ w.r.t. the distribution with density $p$,
+Consider a situation where the expectation of some function $\phi$ w.r.t. the distribution with density $p(\bm{x})$,
 \begin{equation} \label{eq:is-expectation}
 \Phi \coloneqq \E_{p}[\phi(\bm{X})] = \int \phi(\bm{x}) p(\bm{x}) \; \dx{\bm{x}},
 \end{equation}
-is of interest. Assume that the integral is analytically intractable, and that one cannot generate samples from $p$ to approximate this expectation. Assume further that the density $p$ can be evaluated, at least up to a multiplicative constant, i.e. that it takes the form
+is of interest. Assume that the integral is analytically intractable and that one cannot generate samples from $p(\bm{x})$ to approximate this expectation. Assume further that the density $p(\bm{x})$ can be evaluated, at least up to a multiplicative constant, i.e., that it takes the form
 \begin{equation*}
 p(\bm{x}) = \frac{p^*(\bm{x})}{Z},
 \end{equation*}
-where $Z$ is an unknown normalizing constant, and $p^*$ can be evaluated. Such situation frequently arises in Bayesian statistics, where a posterior distribution of interest ${p(\btheta \mid \bm{x}) = \frac{p(\bm{x} \mid \btheta) p(\btheta)}{\int p(\bm{x} \mid \btheta) p(\btheta) \; \dx{\btheta}}}$ is given in terms of the Bayes theorem. The normalizing constant in the denominator is often unavailable in analytic form. However, the numerator can be evaluated.
+where $Z$ is an unknown normalizing constant, and $p^*(\bm{x})$ can be evaluated. Such situation frequently arises in Bayesian statistics, where a posterior distribution of interest
+\begin{equation*}
+{p(\btheta \mid \bm{x}) = \frac{p(\bm{x} \mid \btheta) p(\btheta)}{\int p(\bm{x} \mid \btheta) p(\btheta) \; \dx{\btheta}}}
+\end{equation*}
+is given in terms of the Bayes theorem. The normalizing constant in the denominator is often unavailable in analytic form. However, the numerator can be evaluated.
 
 Next, we introduce a (typically simpler) distribution with density $q(\bm{x}) = \frac{q^*(\bm{x})}{Z_Q}$ s.t.
 \begin{enumerate}
@@ -201,9 +204,9 @@ The expectation \eqref{eq:is-expectation} can then be written as
 \end{equation*}
 where $w^*(\bm{x})$ are called the importance weights. By defining $w(\bm{x}) = \frac{p^*(\bm{x})}{q^*(\bm{x})}$, $\Phi$ can be approximated by
 \begin{equation*}
-\Phi \approx \widehat{\Phi} \coloneqq \frac{\sum_{i=1}^N \phi(\bm{x}^{(i)}) w(\bm{x}^{(i)})}{\sum_{i=1}^Nw(\bm{x}^{(i)})}, \quad \bm{x}^{(1)}, \ldots, \bm{x}^{(N)} \stackrel{iid}{\sim} q.
+\Phi \approx \widehat{\Phi} \coloneqq \frac{\sum_{i=1}^N \phi(\bm{x}^{(i)}) w(\bm{x}^{(i)})}{\sum_{i=1}^Nw(\bm{x}^{(i)})}, \quad \bm{x}^{(1)}, \ldots, \bm{x}^{(N)} \stackrel{iid}{\sim} q(\bm{x}).
 \end{equation*}
-We note that by using $w$ instead of $w^*$ and normalizing by the weights sum instead of the sample size $N$, we bypass the evaluation of $Z$ and $Z_Q$, since they cancel out. The importance weights here account for correcting the discrepancy between the distribution $q$ and the true distribution $p$.
+We note that by using $w$ instead of $w^*$ and normalizing by the weights sum instead of the sample size $N$, we bypass the evaluation of $Z$ and $Z_Q$, since they cancel out. The importance weights here account for correcting the discrepancy between the distribution $q(\bm{x})$ and the true distribution $p(\bm{x})$.
 
 The estimator $\widehat{\Phi}$ converges to the true expectation $\Phi$ as $N \to \infty$. However, it is not necessarily unbiased \citep{information-theory}.
 
@@ -224,7 +227,7 @@ p(\bx_{0:t} \mid \by_{1:t}) & \propto p(\by_t \mid \bx_{0:t}, \by_{1:t-1}) p(\bx
 &= \obs_t(\by_t \mid \bx_t) \trans_t(\bx_t \mid \bx_{t-1}) p(\bx_{0:t-1} \mid \by_{1:t-1}),
 \end{split}
 \end{equation*}
-where the equalities follow from the hidden Markov model independence assumptions. For better clarity, we suppress the static parameter $\btheta$ from the conditioning.
+where the equalities follow from the hidden Markov model independence assumptions. For clarity, we suppress the static parameter $\btheta$ from the conditioning.
 
 For the target $p(\bx_{0:t} \mid \by_{1:t})$, we introduce an importance sampling distribution ${q(\bx_{0:t} \mid \by_{1:t})}$ and sample $\bx_{0:t}^{(i)}$ from it. The importance weights are (up to normalization) given by
 \begin{equation} \label{eq:weight-recursion1}
@@ -244,9 +247,9 @@ w_t^{(i)} & \propto \frac{\obs_t(\by_t \mid \bx_t^{(i)}) \trans_t(\bx_t^{(i)} \m
 & \propto \frac{\obs_t(\by_t \mid \bx_t^{(i)}) \trans_t(\bx_t^{(i)} \mid \bx_{t-1}^{(i)})}{q(\bx_t^{(i)} \mid \bx_{0:t-1}^{(i)}, \by_{1:t})} w_{t-1}^{(i)}.
 \end{split}
 \end{equation}
-So updating the $i$th weight when transitioning from time $t-1$ to $t$ is a relatively simple task involving only multiplication by the first fraction in \eqref{eq:weight-recursion2}.
+Evidently, updating the $i$th weight when transitioning from time $t-1$ to $t$ is a relatively simple task involving only multiplication by the first fraction in \eqref{eq:weight-recursion2}.
 
-The sequential importance sampling algorithm is summarized in \autoref{alg:sis}.
+The sequential importance sampling algorithm is summarized in \autoref{alg:sis}. This is almost the particle filter; there are still two issues to be addressed, though. First, the problem of weight degeneracy discussed in the next paragraph. Second, the choice of the importance sampling distribution $q(\bm{x})$ addressed later.
 \begin{algorithm}[ht]
     \caption{Sequential Importance Sampling}
     \label{alg:sis}
@@ -263,11 +266,10 @@ The sequential importance sampling algorithm is summarized in \autoref{alg:sis}.
         \EndFor
     \end{algorithmic}
 \end{algorithm}
-This by itself is almost the particle filter. There are still two issues to be addressed, though. First, the problem of weight degeneracy discussed in the next paragraph. Second, the choice of the importance sampling distribution $q$ addressed later.
 
 
 \paragraph{Resampling}
-A serious problem preventing the use of the SIS algorithm is that the weights degenerate over time. In each time step, the variance of the weights reduces \citep{particle-filter}. This means that the (normalized) weights always converge to a situation where a single weight is 1 and the others are 0.
+A serious problem preventing the use of the SIS algorithm is that the weights degenerate over time. At each time step, the variance of the weights reduces \citep{particle-filter}. This means that the (normalized) weights always converge to a situation where a single weight is 1 and the others are 0.
 
 To alleviate this, the following resampling step is introduced.
 \begin{algorithm}[ht]
@@ -276,7 +278,7 @@ To alleviate this, the following resampling step is introduced.
     \begin{algorithmic}[1]
         \Input $\text{Importance weights } w_t^{(1)}, \ldots, w_t^{(N)},\ \text{particles } \bx_t^{(1)}, \ldots, \bx_t^{(N)}.$
         
-        \State $\widetilde{w}_t^{(i)} \gets \frac{w_t^{(i)}}{\sum_{j=1}^N w_t^{(j)}}, \quad i = 1, \ldots, N.$ \Comment{Normalize the weights.}
+        \State $\widetilde{w}_t^{(i)} \gets \frac{w_t^{(i)}}{\sum_{j=1}^N w_t^{(j)}}, \quad i = 1, \ldots, N.$ \Comment{Normalize weights.}
         
         \State $\text{Sample } a_i \text{ s.t. } \mathbb{P}(a_i = j) = \widetilde{w}_t^{(j)}, \quad i,j = 1, \ldots, N.$ \Comment{Sample indices with replacement.}
         
@@ -291,9 +293,9 @@ The normalized importance weights are interpreted as a probability vector of a c
 \autoref{alg:resampling} is known as multinomial resampling. There are other, more sophisticated, approaches, such as stratified resampling \citep{resampling}, which come at the cost of increased complexity.
 
 \paragraph{The particle filter}
-The remaining step is the choice of the importance sampling distribution $q$. Obviously, the more similar this distribution is to the target $p$, the closer approximation we obtain.
+The remaining step is the choice of the importance sampling distribution $q(\bm{x})$. Obviously, the more similar this distribution is to the target $p(\bm{x})$, the closer approximation we obtain.
 
-The particle filter arises when the transition distribution $\trans_t$ is chosen as the importance distribution, that is, when
+The particle filter arises when the transition distribution $\trans_t(\bx_t \mid \bx_{t-1}, \btheta)$ is chosen as the importance distribution, that is, when
 \begin{equation*}
 q(\bx_t \mid \bx_{0:t-1}, \by_{1:t}, \btheta) = \trans_t(\bx_t \mid \bx_{t-1}, \btheta).
 \end{equation*}
@@ -301,7 +303,7 @@ The importance weights \eqref{eq:weight-recursion2} then simplify into
 \begin{equation} \label{eq:weight-recursion3}
 w_t^{(i)} \propto \obs_t(\by_t \mid \bx_t^{(i)}) w_{t-1}^{(i)}.
 \end{equation}
-The particle filter is summarized in \autoref{alg:particle-filter}.
+The particle filter is summarized in \autoref{alg:particle-filter}. The algorithm is called \emph{bootstrap} particle filter, due to resemblance of the resampling step to the non-parametric bootstrap \citep{bootstrap}. By being defined in terms of importance sampling, the algorithm inherits the appealing asymptotic properties.
 \begin{algorithm}[ht]
     \caption{Bootstrap particle filter}
     \label{alg:particle-filter}
@@ -321,13 +323,12 @@ The particle filter is summarized in \autoref{alg:particle-filter}.
         \EndFor
     \end{algorithmic}
 \end{algorithm}
-The algorithm is called \emph{bootstrap} particle filter, due to resemblance of the resampling step to the non-parametric bootstrap \citep{bootstrap}. By being defined in terms of importance sampling, the algorithm inherits the appealing asymptotic properties.
 
 
 
 \section{Using the particle filter to estimate the likelihood} \label{sec:particle-filter-estimate}
 
-As mentioned in \autoref{sec:particle-filter}, the particle filter is typically used to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$. This will be utilized to provide a tractable approximation to the likelihood $p(\by_{1:T} \mid \btheta)$ such that the limiting distribution of the Metropolis-Hastings Markov chain remains unaffected. This section describes how it is done, and gives the resulting variant of the sampler
+As mentioned in \autoref{sec:particle-filter}, the particle filter is typically used to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$. This will be utilized to provide a tractable approximation to the likelihood $p(\by_{1:T} \mid \btheta)$ such that the limiting distribution of the Metropolis-Hastings Markov chain remains unaffected. This section describes how it is done and gives the resulting variant of the sampler
 
 \paragraph{Likelihood estimate in general}
 Suppose that we are in possession of an estimator $\widehat{\aux}$ of the likelihood $p(\by_{1:T} \mid \btheta)$. As such, it necessarily depends on $\by_{1:T}$ and $\btheta$. Since we aim to use the particle filter to calculate $\widehat{\aux}$, the estimator also depends on the importance weights calculated using random samples $\bx_t^{(i)}$. This makes the estimator a random variable with some distribution denoted $\psi(\aux \mid \btheta, \by_{1:T})$. It is not necessary to have this distribution available, as it is later shown to cancel out in the Metropolis-Hastings acceptance ratio.
@@ -348,7 +349,7 @@ There are of course some conditions imposed on $\auxjoint(\btheta, \aux \mid \by
     \item $\auxjoint(\btheta, \aux \mid \by_{1:T})$ must integrate to 1;
     \item the marginal distribution of $\auxjoint(\btheta, \aux \mid \by_{1:T})$ for $\btheta$ must be the original target $p(\btheta \mid \by_{1:T})$.
 \end{enumerate}
-The first two conditions simply state that $\auxjoint$ is a valid probability distribution. The third condition ensures that by constructing a Metropolis-Hastings algorithm with $\auxjoint$ as the target, the original target distribution is preserved once the auxiliary variables are marginalized out. All three conditions are satisfied if $\widehat{\aux}$ is a non-negative unbiased estimator of the likelihood $p(\by_{1:T} \mid \btheta)$. This is shown as follows.
+The first two conditions simply state that $\auxjoint$ is a valid probability distribution. The third condition ensures that by constructing a Metropolis-Hastings algorithm with $\auxjoint$ as the target, the original target distribution is preserved once the auxiliary variables are marginalised out. All three conditions are satisfied if $\widehat{\aux}$ is a non-negative unbiased estimator of the likelihood $p(\by_{1:T} \mid \btheta)$. This is shown as follows.
 
 \begin{enumerate}[align=left]
     \item Non-negativity of $\auxjoint$ follows from the assumed non-negativity of the estimator $\widehat{\aux}$ and validity of the distributions in \eqref{eq:aux-joint}.
@@ -381,7 +382,7 @@ Since \eqref{eq:marginal} shows that the marginal of $\auxjoint$ for $\btheta$ i
 \paragraph{Calculating the estimate using the particle filter}
 Finally, we describe how exactly is the particle filter used as an estimator of $p(\by_{1:T} \mid \btheta)$.
 
-First, we decompose the likelihood into a product of simpler distributions, which are then marginalized over the corresponding hidden state:
+First, we decompose the likelihood into a product of simpler distributions, which are then marginalised over the corresponding hidden state:
 \begin{equation} \label{eq:likelihood-factorization}
 \begin{split}
 p(\by_{1:T} \mid \btheta) &= \prod_{t=1}^T p(\by_t \mid \by_{1:t-1}, \btheta) \\
@@ -404,9 +405,9 @@ In $p(\by_t \mid \bx_t^{(i)}, \btheta)$, we recognize the particle filter weight
 \begin{equation} \label{eq:likelihood-estimate}
 \widehat{\aux} \coloneqq \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N w_t^{(i)}.
 \end{equation}
-This estimator is obviously non-negative due to construction of the weights. The proof that it is also unbiased (and therefore also integrates to unity) is more involved, and the reader is referred to \cite{del-moral} for the original proof.
+This estimator is obviously non-negative due to construction of the weights. The proof that it is also unbiased (and therefore also integrates to unity) is more involved and the reader is referred to \cite{del-moral} for the original proof.
 
-Finally, we describe the resulting variant of the Metropolis-Hastings algorithm employing the likelihood estimate \eqref{eq:likelihood-estimate}.
+Finally, we describe the resulting variant of the Metropolis-Hastings algorithm employing the likelihood estimate \eqref{eq:likelihood-estimate}. This algorithm, called marginal Metropolis-Hastings, was introduced by \cite{andrieu}. Compared to \autoref{alg:metropolis-hastings}, all components of this algorithm can be evaluated. Due to construction of the estimator $\widehat{\aux}$, the marginal of the limiting distribution of \autoref{alg:marginal-metropolis-hastings} is the original target $p(\btheta \mid \by_{1:T})$.
 
 \begin{algorithm}[ht]
     \caption{Marginal Metropolis-Hastings}
@@ -436,5 +437,3 @@ Finally, we describe the resulting variant of the Metropolis-Hastings algorithm 
         \Output $\left\{ \btheta^{(1)}, \ldots, \btheta^{(M)} \right\}$
     \end{algorithmic}
 \end{algorithm}
-
-This algorithm, called marginal Metropolis-Hastings, was introduced by \cite{andrieu}. Compared to \autoref{alg:metropolis-hastings}, all components of this algorithm can be evaluated. Due to construction of the estimator $\widehat{\aux}$, the marginal of the limiting distribution of \autoref{alg:marginal-metropolis-hastings} is the original target $p(\btheta \mid \by_{1:T})$.
