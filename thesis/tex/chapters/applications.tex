@@ -1,9 +1,9 @@
 \chapter{Applications}
 \label{chap:applications}
 
-In this chapter, we apply the models developed earlier to two selected problems. The first problem is the Lotka-Volterra model described in \autoref{sec:lotka-volterra}, the second is a simple model for auto-regulation in prokaryotes considered in \autoref{sec:autoregulation}. The particle filter-based approach is compared with the one depending on ABC methods in various settings and model misspecifications.
+Having investigated the theoretical properties of our method, it remains to empirically assess its performance. For the first test scenario, we have selected the Lotka-Volterra model described in \autoref{sec:lotka-volterra}. This is a relatively simple problem whose purpose is to validate our conclusions from the theoretical analysis. The second example is a simplified model for a prokaryotic auto-regulatory network addressed in \autoref{sec:autoregulation}. In both scenarios, the particle filter-based approach is compared with our ABC approximation under various model misspecifications.
 
-Both problems require simulating reactions in order to propagate the system states through time. This is done with the help of the Gillespie algorithm, which is first described in \autoref{sec:gillespie}.
+The considered problems require simulating stochastic reactions in order to propagate the system states through time. This is done with the help of the Gillespie algorithm, which is first described in \autoref{sec:gillespie}.
 
 
 \section{Implementation notes}
@@ -28,7 +28,7 @@ where the element $(i,j)$ of $\mathbb{P}_\text{pre}$ denotes the number of molec
 \begin{equation*}
 \bm{X}_t = \bm{X}_0 + \left(\mathbb{P}_\text{post} - \mathbb{P}_\text{pre}\right) \bm{R}_t,
 \end{equation*}
-and describes the net gain in the number of molecules of each species, given their initial numbers, and accounting for their increase/decrease when a number of reactions of each type occurs.
+and describes the net gain in the number of molecules of each species given their initial numbers, and accounting for their increase/decrease when a number of reactions of each type occurs.
 
 In addition, each reaction $\mathcal{R}_i$ has a stochastic rate constant $c_i$ and a rate law (also called the hazard function) $h_i(\bm{X}_t, c_i)$ associated with it. The interpretation of the hazard function is such that $h_i(\bm{X}_t, c_i) \dx{t}$ is the probability of a reaction of type $\mathcal{R}_i$ occurring in a time interval $(t, t + \dx{t}]$, conditionally on the system being in state $\bm{X}_t$. Such a situation is described by an exponential distribution -- the time to the event of a reaction of type $\mathcal{R}_i$ occurring, assuming no other reaction is taking place, is distributed according to ${\mathcal{E}\mathit{xp}\left(h_i(\bm{X}_t, c_i)\right)}$. This is however a convenient simplification, since multiple reactions are typically occurring at the same time.
 
@@ -101,7 +101,7 @@ The parameter prior and the Metropolis-Hastings proposal are additionally given 
 \prop(\btheta^\prime \mid \btheta) &= \mathcal{N}_3\left(\btheta, 0.01 \mathbb{I}_3\right).
 \end{split}
 \end{equation*}
-The initial parameters are $\btheta^{(0)} = \left(1, 0.005, 0.6\right)^\intercal$. We are working with a dataset simulated using \autoref{alg:gillespie} ran so that it outputs 16 observations $\by_t$, starting from the same parameters $\btheta^{(0)}$. The inference is started in the correct parameters and applied on a short sequence only; its purpose is only to demonstrate that the algorithm is able to identify these parameters.
+The initial parameters are $\btheta^{(0)} = \left(1, 0.005, 0.6\right)^\intercal$. We simulate a sequence of 16 observations $\by_t$ using the Gillespie algorithm with parameters $\btheta^{(0)}$. The inference is started in the correct parameters and applied on a short sequence only; its purpose is only to demonstrate that the algorithm is able to identify these parameters.
 
 We apply the marginal Metropolis-Hastings algorithm depending on the particle filter as well as the one utilizing ABC methods. Both algorithms are ran for $M = 50000$ samples with $N = 100$ particles. Additionally, the number of covered pseudo-observations in the ABC formulation is $\alpha = 90$ and the volume of the p-HPR is $p = 0.95$.
 
@@ -162,7 +162,7 @@ Next, we keep the Gaussian observation model, but corrupt the observation sequen
     \label{fig:lv-pmh-cauchy-c3}
 \end{figure}
 
-Clearly, Cauchy noise corrupts the sequence too much, and the results are miserable. The accepted parameters are almost constant, and the posterior distribution is not even remotely-well approximated. This is an expected behavior, since the particle filter is known not to perform well under model misspecification.
+Clearly, Cauchy noise corrupts the sequence too much, and the results are poor. The accepted parameters are almost constant, and the posterior distribution is not even remotely-well approximated. This is an expected behavior, since the particle filter is known not to perform well under model misspecification.
 
 
 
@@ -229,26 +229,32 @@ Finally, we repeat the same experiment as in the previous section, but use a Cau
 
 The Cauchy kernel might be preferable to the Gaussian one for computational reasons -- its quantile function (required for kernel width tuning) can be calculated without resorting to numerical approximations.
 
-\begin{figure}[htp]
+\begin{figure}[ht]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c1}
     \caption{ABC-based inference of the parameter $c_1$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-cauchy-cauchy-c1}
 \end{figure}
 
-\begin{figure}[htp]
+\begin{figure}[ht]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c2}
     \caption{ABC-based inference of the parameter $c_2$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-cauchy-cauchy-c2}
 \end{figure}
 
-\begin{figure}[htp]
+\begin{figure}[ht]
     \centering
     \includegraphics[width=0.7\linewidth]{lotka-volterra/abcmh_cauchy_cauchy_c3}
     \caption{ABC-based inference of the parameter $c_3$ in the Lotka-Volterra model. Uses Cauchy noise and a Cauchy kernel. The true value is shown in red.}
     \label{fig:lv-abcmh-cauchy-cauchy-c3}
 \end{figure}
+
+
+\subsection{Conclusion}
+The Lotka-Volterra simulation study demonstrated the performance of our algorithm and confirmed our expectations about the differences between the particle filter and our ABC-based method. As indicated in \autoref{chap:inference}, the particle filter-based inference using the correct observation model gives the best results. The sampled values well cover the true parameter and have a reasonable degree of variance. On the other hand, when the observation model is misspecified, the filter completely collapses, and the inference becomes unreliable.
+
+Application of the ABC framework to the correctly specified model introduces some bias which was theoretically justified in \autoref{chap:abc}. The method achieves a slightly worse precision than the particle filter, although the results are still sensible. ABC mainly excels under a misspecified model and prevents the filter from collapsing, while still achieving results comparable to the correctly parameterized particle filter. In addition, the ABC filter is not particularly sensitive to the kernel choice. These points make our method a superior choice when the true observation model is not known, as it allows for stable inference at a similar computational cost.
 
 
 
