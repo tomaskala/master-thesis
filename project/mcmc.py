@@ -87,18 +87,11 @@ class MetropolisHastings(abc.ABC):
                  n_samples,
                  prior,
                  proposal,
-                 tune=True,
-                 tune_interval=100,
                  theta_init=None,
                  random_state=None):
         self.n_samples = n_samples
         self.prior = prior
         self.proposal = proposal
-        self.tune = tune
-        self.tune_interval = tune_interval
-        self.scaling = 1.0
-        self.steps_until_tune = tune_interval
-        self.accepted = 0
         self.theta_init = theta_init
         self.random_state = check_random_state(random_state)
 
@@ -111,23 +104,13 @@ class MetropolisHastings(abc.ABC):
         theta = self.prior.sample(random_state=self.random_state) if self.theta_init is None else self.theta_init
 
         assert theta.ndim == 1
-        # assert y.ndim == 2
 
         thetas = np.zeros(shape=(self.n_samples, theta.shape[0]), dtype=float)
         loglik = -1e99
         accepted = 0
 
         for i in range(self.n_samples):
-            # if not self.steps_until_tune and self.tune: todo
-            #     self._tune_scale()
-            #     self.steps_until_tune = self.tune_interval
-            #     self.accepted = 0
-
             theta_prop = self.proposal.sample(theta, random_state=self.random_state)
-
-            # if self.tune: todo
-            #     theta_prop = theta + (theta_prop - theta) * self.scaling
-
             log_ratio = 0.0
 
             log_ratio += self.prior.log_prob(theta_prop)
@@ -144,52 +127,12 @@ class MetropolisHastings(abc.ABC):
                 theta = theta_prop
                 loglik = loglik_prop
                 accepted += 1
-                # self.accepted += 1 todo
 
             thetas[i] = theta
-            print('THETA', theta)
-            # self.steps_until_tune -= 1 todo
-
             print('Done sample {} of {} ({:.02f}%).'.format(i + 1, self.n_samples, (i + 1) / self.n_samples * 100.0))
             print('Accepted: {} of {} ({:.02f}%) samples so far.'.format(accepted, i + 1, accepted / (i + 1) * 100.0))
 
         return thetas
-
-    def _tune_scale(self):
-        """
-        Tunes the scaling parameter for the proposal distribution
-        according to the acceptance rate over the last tune_interval:
-         Rate   Variance adaptation
-        ------  -------------------
-        <0.001        x 0.1
-        <0.05         x 0.5
-        <0.2          x 0.9
-        >0.5          x 1.1
-        >0.75         x 2.0
-        >0.95         x 10.0
-        Shamelessly stolen from:
-        `https://github.com/pymc-devs/pymc3/blob/master/pymc3/step_methods/metropolis.py`.
-        """
-        acceptance_rate = self.accepted / self.tune_interval
-
-        if acceptance_rate < 0.001:
-            # Reduce by 90 percent.
-            self.scaling *= 0.1
-        elif acceptance_rate < 0.05:
-            # Reduce by 50 percent.
-            self.scaling *= 0.5
-        elif acceptance_rate < 0.2:
-            # Reduce by 10 percent.
-            self.scaling *= 0.9
-        elif acceptance_rate > 0.95:
-            # Increase by a factor of 10.
-            self.scaling *= 10.0
-        elif acceptance_rate > 0.75:
-            # Increase by a factor of 2.
-            self.scaling *= 2.0
-        elif acceptance_rate > 0.5:
-            # Increase by 10 percent.
-            self.scaling *= 1.1
 
     @abc.abstractmethod
     def _log_likelihood_estimate(self, y, theta):
@@ -204,13 +147,10 @@ class MetropolisHastingsPF(MetropolisHastings, abc.ABC):
                  const,
                  prior,
                  proposal,
-                 tune=True,
-                 tune_interval=100,
                  theta_init=None,
                  random_state=None):
-        super(MetropolisHastingsPF, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal, tune=tune,
-                                                   tune_interval=tune_interval, theta_init=theta_init,
-                                                   random_state=random_state)
+        super(MetropolisHastingsPF, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal,
+                                                   theta_init=theta_init, random_state=random_state)
 
         self.n_particles = n_particles
         self.state_init = state_init
@@ -268,7 +208,6 @@ class Kernel(abc.ABC):
     def __init__(self, p: float):
         self.p = p
         self.scale = 1.0
-        # self.scale_log = [self.scale]
 
     @abc.abstractmethod
     def __call__(self, u: np.ndarray, y: float) -> np.ndarray:
@@ -280,12 +219,8 @@ class Kernel(abc.ABC):
         """
         pass
 
-    def tune_scale(self, u: float, y: float):
-        self._tune_scale(u=u, y=y)
-        # self.scale_log.append(self.scale)
-
     @abc.abstractmethod
-    def _tune_scale(self, u: float, y: float):
+    def tune_scale(self, u: float, y: float):
         pass
 
 
@@ -293,7 +228,7 @@ class GaussianKernel(Kernel):
     def __call__(self, u: np.ndarray, y: float) -> np.ndarray:
         return norm.logpdf(x=u, loc=y, scale=self.scale)
 
-    def _tune_scale(self, u: float, y: float):
+    def tune_scale(self, u: float, y: float):
         self.scale = abs(u - y) / norm.ppf(q=((self.p + 1) / 2))
 
 
@@ -301,7 +236,7 @@ class CauchyKernel(Kernel):
     def __call__(self, u: np.ndarray, y: float) -> np.ndarray:
         return cauchy.logpdf(x=u, loc=y, scale=self.scale)
 
-    def _tune_scale(self, u: float, y: float):
+    def tune_scale(self, u: float, y: float):
         self.scale = abs(u - y) / cauchy.ppf(q=((self.p + 1) / 2))
 
 
@@ -309,7 +244,7 @@ class LaplaceKernel(Kernel):
     def __call__(self, u: np.ndarray, y: float) -> np.ndarray:
         return laplace.logpdf(x=u, loc=y, scale=self.scale)
 
-    def _tune_scale(self, u: float, y: float):
+    def tune_scale(self, u: float, y: float):
         self.scale = abs(u - y) / laplace.ppf(q=((self.p + 1) / 2))
 
 
@@ -318,7 +253,7 @@ class UniformKernel(Kernel):
         loc = y - self.scale / 2
         return uniform.logpdf(x=u, loc=loc, scale=self.scale)
 
-    def _tune_scale(self, u: float, y: float):
+    def tune_scale(self, u: float, y: float):
         self.scale = abs(u - y) / uniform.ppf(q=((self.p + 1) / 2))
 
 
@@ -333,16 +268,13 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
                  kernel,
                  prior,
                  proposal,
-                 tune=True,
-                 tune_interval=100,
                  theta_init=None,
                  random_state=None):
         assert int(alpha * n_particles) <= n_particles, \
             'the number of covered pseudo-measurements must be at most the number of particles'
 
-        super(MetropolisHastingsABC, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal, tune=tune,
-                                                    tune_interval=tune_interval, theta_init=theta_init,
-                                                    random_state=random_state)
+        super(MetropolisHastingsABC, self).__init__(n_samples=n_samples, prior=prior, proposal=proposal,
+                                                    theta_init=theta_init, random_state=random_state)
 
         self.n_particles = n_particles
         self.n_particles_covered = int(alpha * n_particles)
@@ -364,6 +296,7 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
 
     def do_inference(self, y):
         if y.ndim == 1:
+            # y = y.squeeze()
             self.kernel = self.kernel_f(self.hpr_p)
         else:
             self.kernel = [self.kernel_f(self.hpr_p) for _ in range(y.shape[1])]
@@ -395,6 +328,10 @@ class MetropolisHastingsABC(MetropolisHastings, abc.ABC):
             self._tune_kernel_scales(u_alpha=u_alpha, y_t=y[t])
 
             lw = self._evaluate_kernel(u=u, y_t=y[t])
+
+            if np.any(np.isnan(lw)) or np.any(np.isinf(lw)):
+                continue
+
             assert lw.ndim == 1 and lw.shape == (self.n_particles,)
             loglik += logsumexp(lw)
 
