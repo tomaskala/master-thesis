@@ -1,0 +1,22 @@
+\chapter{Attached files}
+\label{chap:appendix}
+
+The attached files contain the source codes and input data necessary to run the experiments. The main scripts used to run the simulations come with a command line interface containing a help message listing the accepted arguments. The attachment structure is specified in \autoref{tab:attached-files}.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{ll}
+        \hline
+        \bf File & \bf Description \\ \hline
+        \texttt{/data} & Serialized input data for the two experiments. \\
+        \texttt{auto\_regulation.py} & Script to run the autoregulation experiment. \\
+        \texttt{auto\_regulation\_routines.pyx} & Additional routines writen in Cython. \\
+        \texttt{lotka\_volterra.py} & Script to run the Lotka-Volterra experiment. \\
+        \texttt{lotka\_volterra\_routines.pyx} & Additional routines written in Cython. \\
+        \texttt{mcmc.py} & Implementation of the inference methods. \\
+        \texttt{utils.py} & Miscellaneous utility functions. \\
+        \hline
+    \end{tabular}
+    \caption{List of attached files.}
+    \label{tab:attached-files}
+\end{table}
