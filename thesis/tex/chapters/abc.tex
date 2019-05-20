@@ -62,7 +62,7 @@ We now give a basic variant of a sampling-based approximation to $p^\epsilon(\bt
     \end{algorithmic}
 \end{algorithm}
 
-ABC rejection iteratively samples parameters $\btheta^\prime$ from the prior, plugs them into the likelihood $p(\cdot \mid \btheta^\prime)$, and simulates pseudo-observations $\bu$. These are then compared to the true measurement $\by$ using the metric $\rho$. If the proposed parameter $\btheta^\prime$ gave rise to a pseudo-observation similar enough to the true $\by$ (i.e. $\bu \in \A_{\epsilon, \by}$), the parameter is kept under the assumption that the true data are likely under $\btheta^\prime$. The ABC approximation is then given in terms of the accepted samples $\btheta^{(1)}, \ldots, \btheta^{(M)}$ as the empirical distribution
+ABC rejection iteratively samples parameters $\btheta^\prime$ from the prior, plugs them into the likelihood $p(\cdot \mid \btheta^\prime)$, and simulates pseudo-observations $\bu$. These are then compared to the true measurement $\by$ using the metric $\rho$. If the proposed parameter $\btheta^\prime$ gave rise to a pseudo-observation similar enough to the true $\by$ (i.e., $\bu \in \A_{\epsilon, \by}$), the parameter is kept under the assumption that the true data are likely under $\btheta^\prime$. The ABC approximation is then given in terms of the accepted samples $\btheta^{(1)}, \ldots, \btheta^{(M)}$ as the empirical distribution
 \begin{equation*}
 p(\btheta \mid \by) \approx \frac{1}{M} \sum_{i=1}^M \delta_{\btheta^{(i)}}(\btheta).
 \end{equation*}

@@ -108,12 +108,12 @@ We apply the marginal Metropolis-Hastings algorithm depending on the particle fi
 When using the ABC method, we simulate pseudo-observations from the observation model $\obs_t$ without the noise term. That is, we simulate $\bu_t = \bx_t$, deterministically.
 
 \subsection{Inference using the particle filter}
-In this section, we consider inference using \autoref{alg:marginal-metropolis-hastings}, i.e. using the particle filter to approximate the likelihood.
+To start, we consider inference using \autoref{alg:marginal-metropolis-hastings}, i.e., using the particle filter to approximate the likelihood.
 
 \paragraph{Correctly specified observation model}
 At first, we assume the correct model specification. This means that the observations $\by_t$ have been corrupted by Gaussian noise, and the observation model $\obs_t$ is Gaussian as well. In this situation, the particle filter is expected to perform well, as all assumptions have been met.
 
-In \autoref{fig:lv-pmh-gauss-c1}, \autoref{fig:lv-pmh-gauss-c2} and \autoref{fig:lv-pmh-gauss-c3}, the results for the parameters $c_1$, $c_2$ and $c_3$, respectively, are shown. For each parameter, we show (in this order) the trace plot, the autocorrelation plot, and the histogram of sampled values. We use no burn-in period, as the inference starts in the correct values, but apply thinning of 100, i.e. keep every 100th sample. This ensures relatively uncorrelated samples, as is clear from the auto-correlation plots. The acceptation rate of the Metropolis-Hastings algorithms moves around 20 \%.
+In \autoref{fig:lv-pmh-gauss-c1}, \autoref{fig:lv-pmh-gauss-c2} and \autoref{fig:lv-pmh-gauss-c3}, the results for the parameters $c_1$, $c_2$ and $c_3$, respectively, are shown. For each parameter, we show (in this order) the trace plot, the autocorrelation plot, and the histogram of sampled values. We use no burn-in period, as the inference starts in the correct values, but apply thinning of 100, i.e., keep every 100th sample. This ensures relatively uncorrelated samples, as is clear from the auto-correlation plots. The acceptation rate of the Metropolis-Hastings algorithms moves around 20 \%.
 
 \begin{figure}[htp]
     \centering
@@ -167,7 +167,7 @@ Clearly, Cauchy noise corrupts the sequence too much, and the results are poor. 
 
 
 \subsection{Inference using ABC}
-In this section, we apply \autoref{alg:marginal-metropolis-hastings-abc}, the variant of the Metropolis-Hastings algorithm depending on ABC.
+Next, we apply \autoref{alg:marginal-metropolis-hastings-abc}, the variant of the Metropolis-Hastings algorithm depending on ABC.
 
 \paragraph{Gaussian noise, Gaussian kernel}
 At first, we again corrupt the sequence $\by_t$ by a Gaussian noise, as indicated above. We then run \autoref{alg:marginal-metropolis-hastings-abc} with a Gaussian kernel to infer about the parameters $\btheta$. The results are shown in \autoref{fig:lv-abcmh-gauss-gauss-c1}, \autoref{fig:lv-abcmh-gauss-gauss-c2} and \autoref{fig:lv-abcmh-gauss-gauss-c3}.
@@ -251,7 +251,7 @@ The Cauchy kernel might be preferable to the Gaussian one for computational reas
 \end{figure}
 
 
-\subsection{Conclusion}
+\subsection{Experiment conclusion}
 The Lotka-Volterra simulation study demonstrated the performance of our algorithm and confirmed our expectations about the differences between the particle filter and our ABC-based method. As indicated in \autoref{chap:inference}, the particle filter-based inference using the correct observation model gives the best results. The sampled values well cover the true parameter and have a reasonable degree of variance. On the other hand, when the observation model is misspecified, the filter completely collapses, and the inference becomes unreliable.
 
 Application of the ABC framework to the correctly specified model introduces some bias which was theoretically justified in \autoref{chap:abc}. The method achieves a slightly worse precision than the particle filter, although the results are still sensible. ABC mainly excels under a misspecified model and prevents the filter from collapsing, while still achieving results comparable to the correctly parameterized particle filter. In addition, the ABC filter is not particularly sensitive to the kernel choice. These points make our method a superior choice when the true observation model is not known, as it allows for stable inference at a similar computational cost.
@@ -345,13 +345,15 @@ The parameter prior and the Metropolis-Hastings proposal are additionally given 
 \end{equation*}
 The initial parameters are sampled from the prior distributions. We simulate the data $\by_t$ using \autoref{alg:gillespie} and obtain a sequence of $T = 237$ observations $\by_t \sim \mathcal{N}\left(P_t + 2 (P_2)_t, 2^2\right)$.
 
-The marginal Metropolis-Hastings is run again for $M = 50000$ samples, this time with $N = 200$ particles. The ABC parameters are $\alpha = 180$ and $p = 0.95$. The pseudo-observations are again simulated from $\obs_t$ without the noise term.
+The marginal Metropolis-Hastings is run again for $M = 50000$ samples, this time with $N = 200$ particles. We use a burn-in period of 10000 and thin the samples by 25. The ABC parameters are $\alpha = 180$ and $p = 0.95$. The pseudo-observations are again simulated from $\obs_t$ without the noise term.
 
 \subsection{Inference using the particle filter}
-
+We again start by applying the particle filter-based algorithm. At first, we examine the results under a well-specified model. Next, we use a misspecified model by once again corrupting the input sequence by the Cauchy noise.
 
 \paragraph{Correctly specified observation model}
 At first, we consider the model exactly as described above, and perform inference using the particle filter. This is a well-specified model, since the observation model $\obs_t$ coincides with the noise on the data sequence $\by_{1:T}$. The results are shown in \autoref{fig:ar-pmh-gauss-1}, \autoref{fig:ar-pmh-gauss-2} and \autoref{fig:ar-pmh-gauss-3}.
+
+Most of the parameters (apart from $c_4$) are well-covered by the posterior samples, agreeing with the results of \cite{wilkinson}. Even after thinning, we see that the samples are highly correlated. The original authors did not provide any autocorrelation plots, so the results cannot be compared. Having such correlated samples means that calculating empirical estimates would be unreliable, as they typically require independent observations. This issue could be addressed by considering more complex proposal distributions or samplers.
 
 \begin{figure}[htp]%
     \centering
@@ -381,7 +383,9 @@ At first, we consider the model exactly as described above, and perform inferenc
 \end{figure}
 
 \paragraph{Misspecified observation model}
-Next, we examine the filter behavior under a misspecified observation model. We still use $\obs_t$ as described above (i.e. Gaussian), but corrupt the input sequence $\by_{1:T}$ by a Cauchy noise instead of Gaussian, keeping the scale parameter at 2. The results are shown in \autoref{fig:ar-pmh-cauchy-1}, \autoref{fig:ar-pmh-cauchy-2} and \autoref{fig:ar-pmh-cauchy-3}.
+Next, we examine the filter behavior under a misspecified observation model. We still use $\obs_t$ as described above (i.e., Gaussian), but corrupt the input sequence $\by_{1:T}$ by a Cauchy noise instead of Gaussian, keeping the scale parameter at 2. The results are shown in \autoref{fig:ar-pmh-cauchy-1}, \autoref{fig:ar-pmh-cauchy-2} and \autoref{fig:ar-pmh-cauchy-3}.
+
+The results are (as expected) similar to the same situation in the Lotka-Volterra study. The particle filter completely collapses under a misspecified model and is unusable for any statistical inference.
 
 \begin{figure}[htp]%
     \centering
@@ -417,6 +421,10 @@ Next, we apply the marginal Metropolis-Hastings algorithm depending on the ABC m
 \paragraph{Gaussian noise, Gaussian kernel}
 At first, we use an input sequence corrupted by a Gaussian noise, as described above, and use ABC with a Gaussian kernel. The results are shown in \autoref{fig:ar-abcmh-gauss-gauss-1}, \autoref{fig:ar-abcmh-gauss-gauss-2} and \autoref{fig:ar-abcmh-gauss-gauss-3}.
 
+Unfortunately, it appears that the ABC approximation introduces too much bias to the inference, as only two parameters ($c_4$ and $c_7$) are correctly identified. In addition, the samples for $c_8$ are not as far off, judging from the x-axis labels. Samples for the remaining parameters have diverged from the true values. As was the case with the particle filter, there is a strong autocorrelation present in the sampled values.
+
+Some indications given in \cite{wilkinson-book} state that ABC (though applied in a different context than SSMs) together with the simple Gillespie algorithm can lead to poor results. To obtain better estimates, more sophisticated reaction simulators should be considered for the complex problems studied in molecular biology.
+
 \begin{figure}[htp]%
     \centering
     \subfloat[$c_1$]{{\includegraphics[width=0.45\textwidth]{autoregulation/abcmh_gauss_gauss_c1} }}%
@@ -448,6 +456,10 @@ At first, we use an input sequence corrupted by a Gaussian noise, as described a
 \paragraph{Cauchy noise, Gaussian kernel}
 Next, we again apply the heavy-tailed Cauchy noise to the input sequence, but keep using the Gaussian kernel. We are interested to see whether the filter collapses, as was the case in particle filter-based inference under a misspecified model. The results are shown in \autoref{fig:ar-abcmh-cauchy-gauss-1}, \autoref{fig:ar-abcmh-cauchy-gauss-2} and \autoref{fig:ar-abcmh-cauchy-gauss-3}.
 
+The situation is similar to the previous experiment with Gaussian noise. The parameters $c_1, c_4$ and to a lesser degree, $c_8$, are identified. The samples of the other parameters diverge.
+
+Unlike the particle filter, our method again does not collapse under model misspecification. It is still a better choice if we do not have access to the correct model, as it manages to identify at least some parameters.
+
 \begin{figure}[htp]%
     \centering
     \subfloat[$c_1$]{{\includegraphics[width=0.45\textwidth]{autoregulation/abcmh_cauchy_gauss_c1} }}%
@@ -476,7 +488,9 @@ Next, we again apply the heavy-tailed Cauchy noise to the input sequence, but ke
 \end{figure}
 
 \paragraph{Cauchy noise, Cauchy kernel}
-Finally, we are interested to see what happens when we keep the Cauchy noise on the input sequence, but use the more correct Cauchy kernel. The results are shown in \autoref{fig:ar-abcmh-cauchy-cauchy-1}, \autoref{fig:ar-abcmh-cauchy-cauchy-2} and \autoref{fig:ar-abcmh-cauchy-cauchy-3}.
+Finally, we are interested to see what happens when we keep the Cauchy noise on the input sequence but use the Cauchy kernel. The results are shown in \autoref{fig:ar-abcmh-cauchy-cauchy-1}, \autoref{fig:ar-abcmh-cauchy-cauchy-2} and \autoref{fig:ar-abcmh-cauchy-cauchy-3}.
+
+As expected, the filter does not collapse. There is still a notable identification problem, similarly to the the previous two experiments -- a simple change in the kernel function cannot significantly improve the estimate quality. Compared to the Gaussian kernel experiment, the sampled values are somewhat more spread out.
 
 \begin{figure}[htp]%
     \centering
@@ -504,3 +518,11 @@ Finally, we are interested to see what happens when we keep the Cauchy noise on 
     \caption{ABC-based inference of the parameters $c_7$ and $c_8$ in the auto-regulation model. Uses Cauchy noise and a Cauchy kernel. The true values are shown in red.}%
     \label{fig:ar-abcmh-cauchy-cauchy-3}%
 \end{figure}
+
+
+\subsection{Experiment conclusion}
+We applied our model to a simplified model of a prokaryotic autoregulatory network. As in the Lotka-Volterra study, the latent spaces were again simulated using the Gillespie algorithm. In this experiment, inference was much more difficult, as the observed sequence $\by_t$ was only a one-dimensional linear combination of two of the four elements of the state vector $\bx_t$.
+
+The particle filter under a correct observation model managed to identify the static parameter well. When this model was misspecified, the filter completely collapsed and the results became unusable, as was expected.
+
+Our ABC-based method introduced too much bias and encountered identification problems in about half of the unknown parameters. Nevertheless, the ABC filter does not collapse even when applied to a sequence corrupted by heavy-tailed noise. A possible cause for the unsatisfactory results is the simple Gillespie algorithm. It is likely that using a more complex simulation mechanism would lead to better results; this is a possibility left for future work.
