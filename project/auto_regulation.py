@@ -56,20 +56,18 @@ def load_data(path):
     with open(path, 'rb') as f:
         t, y = pickle.load(f)
 
-    y += stats.norm.rvs(loc=0.0, scale=2.0, size=y.shape, random_state=1)
-
-    return t[:250], y[1:250].reshape(-1, 1)
+    return t, y
 
 
 def main():
     algorithm = args.algorithm
-    path = './auto_regulation_{}_gauss_gauss_test2'.format(algorithm)
+    path = './auto_regulation_{}'.format(algorithm)
     random_state = check_random_state(1)
 
     if not os.path.exists(path):
         os.makedirs(path)
 
-    t, y = load_data('./data/ar_data.pickle')
+    t, y = load_data('./data/auto_regulation.pickle')
     n_samples = args.n_samples
     n_particles = args.n_particles
     burn_in = args.burn_in
@@ -82,7 +80,7 @@ def main():
         'c5': 0.1,
         'c6': 0.9,
         'observation_std': 2.0,
-        'times': t
+        'times': np.concatenate(([0.0], t))
     }
 
     prior = Prior([
@@ -104,7 +102,7 @@ def main():
         Distribution(stats.norm, scale=0.08)
     ])
 
-    theta_init = np.log(np.array([0.1, 0.7, 0.35, 0.2, 0.3, 0.1]))  # stats.uniform.rvs(loc=-7, scale=9, size=6)
+    theta_init = stats.uniform.rvs(loc=-7, scale=9, size=6)
     random_state = check_random_state(1)
 
     if algorithm == 'abcmh':
@@ -158,18 +156,18 @@ def main():
         param_name = pretty_names[i]
         param_values = theta[:, i]
 
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, dpi=300)
         plt.suptitle(param_name)
 
         ax1.set_title('Trace plot')
-        ax1.plot(param_values)
-        ax1.axhline(truth[i], color='red', lw=2)
+        ax1.plot(param_values, color='dimgrey')
+        ax1.axhline(truth[i], color='crimson', lw=2)
 
-        plot_acf(param_values, ax=ax2)
+        plot_acf(param_values, lags=100, ax=ax2, color='dimgrey')
 
         ax3.set_title('Histogram')
-        ax3.hist(param_values, density=True, bins=30)
-        ax3.axvline(truth[i], color='red', lw=2)
+        ax3.hist(param_values, density=True, bins=30, color='dimgrey')
+        ax3.axvline(truth[i], color='crimson', lw=2)
 
         plt.show()
 
