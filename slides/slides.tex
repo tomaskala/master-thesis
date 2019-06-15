@@ -131,7 +131,7 @@
     \begin{frame}
     \frametitle{Particle filter}
     \begin{itemize}
-        \item Uses weighted particles $\left\{\left(\bx_t^{(i)}, w_t^{(i)}\right) : i = 1, \ldots, N\right\}$ to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$.
+        \item Use weighted particles $\left\{\left(\bx_t^{(i)}, w_t^{(i)}\right) : i = 1, \ldots, N\right\}$ to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$.
         \item Simulate the particles $\bx_t^{(i)} \sim \trans_t(\bx_t \mid \bx_{t-1}^{(i)})$ and weight them according to $w_t^{(i)} = \obs_t(\bx_t^{(i)} \mid \by_t, \btheta)$.
         \item An unbiased likelihood estimator is
         \begin{equation*}
@@ -184,6 +184,48 @@
     \end{frame}
 
     \begin{frame}
+    \frametitle{Lotka-Volterra model}
+    
+    {\color{red} TODO: 1. Gaussian PF, 2. Cauchy PF, 3. Gaussian ABC, 4. Cauchy ABC. All for $c_1$ only? Show only histograms to save space?}
+    \end{frame}
+
+    \begin{frame}
+    \frametitle{Prokaryotic autoregulation model}
+    \begin{columns}
+        \begin{column}{0.4\textwidth}
+            \begin{equation*}
+            \begin{split}
+            \mathcal{R}_1:\quad & \mathit{DNA} + P_2 \to \mathit{DNA} \cdot P_2 \\
+            \mathcal{R}_2:\quad & \mathit{DNA} \cdot P_2 \to \mathit{DNA} + P_2 \\
+            \mathcal{R}_3:\quad & \mathit{DNA} \to \mathit{DNA} + \mathit{RNA} \\
+            \mathcal{R}_4:\quad & \mathit{RNA} \to \mathit{RNA} + P
+            \end{split}
+            \end{equation*}
+        \end{column}
+%
+        \begin{column}{0.4\textwidth}
+            \begin{equation*}
+            \begin{split}
+            \mathcal{R}_5:\quad & 2P \to P_2 \\
+            \mathcal{R}_6:\quad & P_2 \to 2P \\
+            \mathcal{R}_7:\quad & \mathit{RNA} \to \emptyset \\
+            \mathcal{R}_8:\quad & P \to \emptyset
+            \end{split}
+            \end{equation*}
+        \end{column}
+    \end{columns}
+
+    \begin{itemize}
+        \item Unknown parameters $\btheta = \left(c_1, c_2, c_3, c_4, c_7, c_8\right)^\intercal$, Gaussian observation model.
+        \item $\by_t = P_t + 2(P_2)_t$.
+    \end{itemize}
+    \end{frame}
+
+    \begin{frame}
+    \frametitle{Prokaryotic autoregulation model}
+    \end{frame}
+
+    \begin{frame}
     \frametitle{Prokaryotic autoregulation model}
     \end{frame}
 
@@ -200,6 +242,24 @@
 
     \begin{frame}[noframenumbering]
     \frametitle{Gillespie algorithm}
+    All operations for $i = 1, \ldots, v$, the number of reactions.
+    \setbeamertemplate{enumerate items}[default]
+    \begin{enumerate}
+        \item Set  $t = 0$, initialize $\bx_t$.
+        \item While $t \leq T$:
+        \setbeamertemplate{enumerate items}[default]
+        \begin{enumerate}
+            \item Calculate $\displaystyle h_i(\bx_t, c_i) = c_i \prod_{j=1}^u \begin{pmatrix}
+            x_{j,t} \\
+            p_{ij}
+            \end{pmatrix}$.
+            \item Sample $\dx{t} \sim \mathcal{E}\mathit{xp}(\sum_{i=1}^v h_i(\bx_t, c_i))$.
+            \item Sample $i$ with probability $\propto h_i(\bx_t, c_i)$.
+            \item Set $\bx_{t+\dx{t}}$ by updating $\bx_t$ according to $\mathcal{R}_i$.
+            \item $t = t + \dx{t}$.
+        \end{enumerate}
+        \item Output $\bx_t$, $t$.
+    \end{enumerate}
     \end{frame}
 
     \begin{frame}[noframenumbering]
