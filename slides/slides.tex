@@ -137,22 +137,26 @@
         \begin{equation*}
         \widehat{p}(\by_{1:T} \mid \btheta) = \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N w_t^{(i)}.
         \end{equation*}
-        \item Problem: the observation model $\obs_t(\bx_t \mid \by_t, \btheta)$ must be known and probabilistic.
+        \item {\color[RGB]{204,0,0} Problem: the observation model $\obs_t(\bx_t \mid \by_t, \btheta)$ must be known and probabilistic.}
     \end{itemize}
     \end{frame}
 
     \begin{frame}
     \frametitle{Approximate Bayesian Computation (ABC)}
+    \begin{itemize}
+        \item Still approximating the likelihood, different weight calculation.
+        \item Simulate pseudo-observations $\bu_t$ from $\obs_t(\by_t \mid \bx_t, \btheta)$.
+    \end{itemize}
+    
     \begin{columns}
-        \begin{column}{0.45\textwidth}
+        \begin{column}{0.44\textwidth}
             \begin{itemize}
-                \item Use $\obs_t(\by_t \mid \bx_t, \btheta)$ to simulate pseudo-observations $\bu_t$.
-                \item Determine $w_t^{(i)}$ based on the closeness of $\bu_t$ to the true $\by_t$ measured by a kernel function.
+                \item Determine $w_t^{(i)}$ based on the distance of $\bu_t$ to the true $\by_t$ measured by a kernel function.
                 \item A flexible and robust approach no longer requiring a probabilistic observation model.
             \end{itemize}
         \end{column}
 %
-        \begin{column}{0.5\textwidth}
+        \begin{column}{0.47\textwidth}
             \begin{figure}
                 \centering
                 \includegraphics[width=\columnwidth]{images/kernel}
@@ -172,10 +176,10 @@
         \mathcal{R}_3 &: \quad \mathcal{X}_2 \to \emptyset. \\
         \end{split}
         \end{equation*}
-        \item Assume $\by_t = \bx_t = \left(x_{1,t}, x_{2,t}\right)^\intercal$, Gaussian observation model and the unknown parameters to be $\btheta = \left(c_1, c_2, c_3\right)^\intercal$.
+        \item Assume $\by_t = \bx_t = \left(x_{1,t}, x_{2,t}\right)^\intercal$, Gaussian observation model and the unknown parameters to be $\btheta = \left(\textcolor[RGB]{51,51,178}{c_1}, \textcolor[RGB]{51,51,178}{c_2}, \textcolor[RGB]{51,51,178}{c_3}\right)^\intercal$.
         \item Denoting the number of species $j$ present at the beginning of $\mathcal{R}_i$ by $p_{ij}$,
         \begin{equation*}
-            c_i \prod_{j=1}^{2} \begin{pmatrix}
+            \textcolor[RGB]{51,51,178}{c_i} \prod_{j=1}^{2} \begin{pmatrix}
             x_{j,t} \\
             p_{ij}
             \end{pmatrix}
@@ -249,7 +253,7 @@
     \end{columns}
 
     \begin{itemize}
-        \item Unknown parameters $\btheta = \left(c_1, c_2, c_3, c_4, c_7, c_8\right)^\intercal$, Gaussian observation model.
+        \item Unknown parameters $\btheta = \left(\textcolor[RGB]{51,51,178}{c_1}, \textcolor[RGB]{51,51,178}{c_2}, \textcolor[RGB]{51,51,178}{c_3}, \textcolor[RGB]{51,51,178}{c_4}, \textcolor[RGB]{51,51,178}{c_7}, \textcolor[RGB]{51,51,178}{c_8}\right)^\intercal$, Gaussian observation model.
         \item $\bx_t = \left(\mathit{RNA}_t, P_t, \left(P_2\right)_t, \mathit{DNA}_t\right)^\intercal$.
         \item $\by_t = P_t + 2(P_2)_t$.
     \end{itemize}
