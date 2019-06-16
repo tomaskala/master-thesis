@@ -132,7 +132,7 @@
     \frametitle{Particle filter}
     \begin{itemize}
         \item Use weighted particles $\left\{\left(\bx_t^{(i)}, w_t^{(i)}\right) : i = 1, \ldots, N\right\}$ to approximate the filtering distribution $p(\bx_t \mid \by_{1:t}, \btheta)$.
-        \item Simulate the particles $\bx_t^{(i)} \sim \trans_t(\bx_t \mid \bx_{t-1}^{(i)})$ and weight them according to $w_t^{(i)} = \obs_t(\bx_t^{(i)} \mid \by_t, \btheta)$.
+        \item Simulate the particles $\bx_t^{(i)} \sim \trans_t(\bx_t \mid \bx_{t-1}^{(i)})$ and weight them according to $w_t^{(i)} = \obs_t(\by_t \mid \bx_t^{(i)}, \btheta)$.
         \item An unbiased likelihood estimator is
         \begin{equation*}
         \widehat{p}(\by_{1:T} \mid \btheta) = \prod_{t=1}^T \frac{1}{N} \sum_{i=1}^N w_t^{(i)}.
@@ -250,6 +250,7 @@
 
     \begin{itemize}
         \item Unknown parameters $\btheta = \left(c_1, c_2, c_3, c_4, c_7, c_8\right)^\intercal$, Gaussian observation model.
+        \item $\bx_t = \left(\mathit{RNA}_t, P_t, \left(P_2\right)_t, \mathit{DNA}_t\right)^\intercal$.
         \item $\by_t = P_t + 2(P_2)_t$.
     \end{itemize}
     \end{frame}
