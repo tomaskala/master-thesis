@@ -47,84 +47,132 @@
     \maketitle
     \end{frame}
 
-    
+
     \begin{frame}
     \frametitle{State-Space Model (SSM)}
-    
     \begin{columns}
         \begin{column}{0.5\textwidth}
             \begin{figure}[ht]
                 \centering
                 \resizebox{\columnwidth}{!}{%
-                \begin{tikzpicture}
-                % Style
-                \tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 16mm]
-                \tikzstyle{connect}=[-latex, thick]
-                
-                % Nodes X
-                \node[main,shape=circle,draw=black](X0) at (1,4) {$\bx_0$};
-                \node[main,shape=circle,draw=black](X1) at (3,4) {$\bx_1$};
-                \node[main,shape=circle,draw=black](X2) at (5,4) {$\bx_2$};
-                \node[](Xdots) at (7,4) {$\ldots$};
-                \node[main,shape=circle,draw=black](XT) at (9,4) {$\bx_T$};
-                
-                % Node theta
-                \node[](theta) at (7,2) {$\btheta$};
-                
-                % Nodes Y
-                \node[main,shape=circle,draw=black,fill=black!20](Y1) at (3,0) {$\by_1$};
-                \node[main,shape=circle,draw=black,fill=black!20](Y2) at (5,0) {$\by_2$};
-                \node[](Ydots) at (7,0) {$\ldots$};
-                \node[main,shape=circle,draw=black,fill=black!20](YT) at (9,0) {$\by_T$};
-                
-                % Edges XX
-                \path [->] (X0) edge[connect] node[left] [above] {$\trans_1$} (X1);
-                \path [->] (X1) edge[connect] node[left] [above] {$\trans_2$} (X2);
-                \path [->] (X2) edge[connect] node[left] [above] {$\trans_3$} (Xdots);
-                \path [->] (Xdots) edge[connect] node[left] [above] {$\trans_T$} (XT);
-                
-                % Edges XY
-                \path [->] (X1) edge[connect] node[left] [left] {$\obs_1$} (Y1);
-                \path [->] (X2) edge[connect] node[left] [left] {$\obs_2$} (Y2);
-                \path [->] (XT) edge[connect] node[left] [left] {$\obs_T$} (YT);
-                
-                % Edges theta X
-                \path [->] (theta) edge[connect] node[left] {} (X0);
-                \path [->] (theta) edge[connect] node[left] {} (X1);
-                \path [->] (theta) edge[connect] node[left] {} (X2);
-                \path [->] (theta) edge[connect] node[left] {} (XT);
-                
-                % Edges theta Y
-                \path [->] (theta) edge[connect] node[left] {} (Y1);
-                \path [->] (theta) edge[connect] node[left] {} (Y2);
-                \path [->] (theta) edge[connect] node[left] {} (YT);
-                \end{tikzpicture}
+                    \begin{tikzpicture}
+                    % Style
+                    \tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 16mm]
+                    \tikzstyle{connect}=[-latex, thick]
+                    
+                    % Nodes X
+                    \node[main,shape=circle,draw=black](X0) at (1,4) {$\bx_0$};
+                    \node[main,shape=circle,draw=black](X1) at (3,4) {$\bx_1$};
+                    \node[main,shape=circle,draw=black](X2) at (5,4) {$\bx_2$};
+                    \node[](Xdots) at (7,4) {$\ldots$};
+                    \node[main,shape=circle,draw=black](XT) at (9,4) {$\bx_T$};
+                    
+                    % Nodes Y
+                    \node[main,shape=circle,draw=black,fill=black!20](Y1) at (3,0) {$\by_1$};
+                    \node[main,shape=circle,draw=black,fill=black!20](Y2) at (5,0) {$\by_2$};
+                    \node[](Ydots) at (7,0) {$\ldots$};
+                    \node[main,shape=circle,draw=black,fill=black!20](YT) at (9,0) {$\by_T$};
+                    
+                    % Edges XX
+                    \path [->] (X0) edge[connect] node[left] [above] {$\trans_1$} (X1);
+                    \path [->] (X1) edge[connect] node[left] [above] {$\trans_2$} (X2);
+                    \path [->] (X2) edge[connect] node[left] [above] {$\trans_3$} (Xdots);
+                    \path [->] (Xdots) edge[connect] node[left] [above] {$\trans_T$} (XT);
+                    
+                    % Edges XY
+                    \path [->] (X1) edge[connect] node[left] [left] {$\obs_1$} (Y1);
+                    \path [->] (X2) edge[connect] node[left] [left] {$\obs_2$} (Y2);
+                    \path [->] (XT) edge[connect] node[left] [left] {$\obs_T$} (YT);
+                    \end{tikzpicture}
                 }
-                \label{fig:graphical-model}
+                \label{fig:graphical-model1}
             \end{figure}            
         \end{column}
 %
         \begin{column}{0.5\textwidth}
-            \begin{equation*}
-            \begin{split}
-            \bx_0 \mid \btheta & \sim \sprior(\bx_0 \mid \btheta), \\
-            \bx_t \mid \bx_{t-1}, \btheta & \sim \trans_t(\bx_t \mid \bx_{t-1}, \btheta), \\
-            \by_t \mid \bx_t, \btheta & \sim \obs_t(\by_t \mid \bx_t, \btheta), \\
-            \btheta & \sim \pprior(\btheta).
-            \end{split}
-            \end{equation*}
+            \begin{alignat*}{2}
+            x_t & = \sin x_{t-1} + \epsilon_t, \quad & \epsilon_t \sim \mathcal{N}(0, \sigma_x^2) \\
+            y_t & = 0.5 x_t + \eta_t, \quad & \eta_t \sim \mathcal{N}(0, \sigma_y^2) \\
+            \textcolor{white}{\btheta} & \textcolor{white}{=} \textcolor{white}{\left(c, \sigma_x^2, \sigma_y^2\right)^\intercal} &
+            \end{alignat*}
         \end{column}
-    \end{columns} 
+    \end{columns}
 
     \begin{itemize}
-        \item The posterior of $\btheta$ takes the form of
-        \begin{equation*}
-        p(\btheta \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pprior(\btheta),
-        \end{equation*}
-        where
-        \begin{equation*}
-         p(\by_{1:T} \mid \btheta) = \int p(\bx_{0:T}, \by_{1:T} \mid \btheta) \; \dx{\bx_{0:T}}.
-        \end{equation*}
+        \item Interest in $p(\bx_{0:T} \mid \by_{1:T})$.
+        \item Solvable via filtering.
+        \item[\textcolor{white}{\textbullet}] \textcolor{white}{$p(\by_{1:T} \mid \btheta) = \int p(\bx_{0:T}, \by_{1:T} \mid \btheta) \; \dx{\bx_{0:T}}$ intractable in general.}
+    \end{itemize}
+    \end{frame}
+
+    \begin{frame}
+    \frametitle{State-Space Model (SSM)}
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \begin{figure}[ht]
+                \centering
+                \resizebox{\columnwidth}{!}{%
+                    \begin{tikzpicture}
+                    % Style
+                    \tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 16mm]
+                    \tikzstyle{connect}=[-latex, thick]
+                    
+                    % Nodes X
+                    \node[main,shape=circle,draw=black](X0) at (1,4) {$\bx_0$};
+                    \node[main,shape=circle,draw=black](X1) at (3,4) {$\bx_1$};
+                    \node[main,shape=circle,draw=black](X2) at (5,4) {$\bx_2$};
+                    \node[](Xdots) at (7,4) {$\ldots$};
+                    \node[main,shape=circle,draw=black](XT) at (9,4) {$\bx_T$};
+                    
+                    % Node theta
+                    \node[](theta) at (7,2) {$\btheta$};
+                    
+                    % Nodes Y
+                    \node[main,shape=circle,draw=black,fill=black!20](Y1) at (3,0) {$\by_1$};
+                    \node[main,shape=circle,draw=black,fill=black!20](Y2) at (5,0) {$\by_2$};
+                    \node[](Ydots) at (7,0) {$\ldots$};
+                    \node[main,shape=circle,draw=black,fill=black!20](YT) at (9,0) {$\by_T$};
+                    
+                    % Edges XX
+                    \path [->] (X0) edge[connect] node[left] [above] {$\trans_1$} (X1);
+                    \path [->] (X1) edge[connect] node[left] [above] {$\trans_2$} (X2);
+                    \path [->] (X2) edge[connect] node[left] [above] {$\trans_3$} (Xdots);
+                    \path [->] (Xdots) edge[connect] node[left] [above] {$\trans_T$} (XT);
+                    
+                    % Edges XY
+                    \path [->] (X1) edge[connect] node[left] [left] {$\obs_1$} (Y1);
+                    \path [->] (X2) edge[connect] node[left] [left] {$\obs_2$} (Y2);
+                    \path [->] (XT) edge[connect] node[left] [left] {$\obs_T$} (YT);
+                    
+                    % Edges theta X
+                    \path [->] (theta) edge[connect] node[left] {} (X0);
+                    \path [->] (theta) edge[connect] node[left] {} (X1);
+                    \path [->] (theta) edge[connect] node[left] {} (X2);
+                    \path [->] (theta) edge[connect] node[left] {} (XT);
+                    
+                    % Edges theta Y
+                    \path [->] (theta) edge[connect] node[left] {} (Y1);
+                    \path [->] (theta) edge[connect] node[left] {} (Y2);
+                    \path [->] (theta) edge[connect] node[left] {} (YT);
+                    \end{tikzpicture}
+                }
+                \label{fig:graphical-model2}
+            \end{figure}                
+        \end{column}
+        %
+        \begin{column}{0.5\textwidth}
+            \begin{alignat*}{2}
+            x_t & = \sin x_{t-1} + \epsilon_t, \quad & \epsilon_t \sim \mathcal{N}(0, \textcolor[RGB]{51,51,178}{\sigma_x^2}) \\
+            y_t & = \textcolor[RGB]{51,51,178}{c} x_t + \eta_t, \quad & \eta_t \sim \mathcal{N}(0, \textcolor[RGB]{51,51,178}{\sigma_y^2}) \\
+            \btheta & = \left(\textcolor[RGB]{51,51,178}{c}, \textcolor[RGB]{51,51,178}{\sigma_x^2}, \textcolor[RGB]{51,51,178}{\sigma_y^2}\right)^\intercal &
+            \end{alignat*}
+        \end{column}
+    \end{columns}
+    
+    \begin{itemize}
+        \item Interest in $p(\btheta, \bx_{0:T} \mid \by_{1:T}) = p(\bx_{0:T} \mid \btheta, \by_{1:T}) p(\btheta \mid \by_{1:T})$.
+        \item $p(\btheta \mid \by_{1:T}) \propto p(\by_{1:T} \mid \btheta) \pi(\btheta)$.
+        \item $p(\by_{1:T} \mid \btheta) = \int p(\bx_{0:T}, \by_{1:T} \mid \btheta) \; \dx{\bx_{0:T}}$ intractable in general.
     \end{itemize}
     \end{frame}
 
