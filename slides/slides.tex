@@ -349,6 +349,44 @@
     \end{frame}
 
     \begin{frame}[noframenumbering]
+    \frametitle{Prokaryotic autoregulation model}
+    \begin{itemize}
+        \item The model assumes that the dimer of a protein $P$, denoted $P_2$, represses the transcription of its coding gene by binding to a regulatory region in the gene.
+    \end{itemize}
+    \begin{columns}
+        \begin{column}{0.4\textwidth}
+            \begin{equation*}
+            \begin{split}
+            \mathcal{R}_1:\quad & \mathit{DNA} + P_2 \to \mathit{DNA} \cdot P_2 \\
+            \mathcal{R}_2:\quad & \mathit{DNA} \cdot P_2 \to \mathit{DNA} + P_2 \\
+            \mathcal{R}_3:\quad & \mathit{DNA} \to \mathit{DNA} + \mathit{RNA} \\
+            \mathcal{R}_4:\quad & \mathit{RNA} \to \mathit{RNA} + P \\
+            \mathcal{R}_5:\quad & 2P \to P_2 \\
+            \mathcal{R}_6:\quad & P_2 \to 2P \\
+            \mathcal{R}_7:\quad & \mathit{RNA} \to \emptyset \\
+            \mathcal{R}_8:\quad & P \to \emptyset
+            \end{split}
+            \end{equation*}
+        \end{column}
+%
+        \begin{column}{0.4\textwidth}
+            \begin{equation*}
+            \begin{split}
+            & \text{Repression} \\
+            & \text{(Reversible)} \\
+            & \text{Transcription} \\
+            & \text{Translation} \\
+            & \text{Dimerization} \\
+            & \text{(Reversible)} \\
+            & \text{RNA degradation} \\
+            & \text{Protein degradation} \\
+            \end{split}
+            \end{equation*}
+        \end{column}
+    \end{columns}
+    \end{frame}
+
+    \begin{frame}[noframenumbering]
     \frametitle{Gillespie algorithm}
     All operations for $i = 1, \ldots, v$, the number of reactions.
     \setbeamertemplate{enumerate items}[default]
